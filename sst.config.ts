@@ -124,7 +124,7 @@ export default $config({
         output: "dist",
       },
       environment: {
-        VITE_API_URL: "https://api.oncallfm.com",
+        VITE_API_URL: "https://api.oncallfm.com/api",
       },
     });
 
