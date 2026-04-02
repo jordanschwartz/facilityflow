@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -6,9 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { quotesApi } from '../../api/quotes';
+import type { AttachmentDto } from '../../types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Button from '../../components/ui/Button';
-import { CheckCircleIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, TrashIcon, PlusIcon, PaperClipIcon, ArrowUpTrayIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { formatCurrency } from '../../utils/formatters';
 
 const schema = z.object({
@@ -33,6 +34,91 @@ type FormData = z.infer<typeof schema>;
 function OptionalBadge() {
   return (
     <span className="ml-2 text-xs font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
+  );
+}
+
+const ACCEPTED_TYPES = 'image/jpeg,image/png,image/webp,image/gif,image/heic,video/mp4,video/quicktime,video/x-msvideo,application/pdf';
+
+function AttachmentsSection({ token }: { token: string }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    for (const file of Array.from(files)) {
+      try {
+        const res = await quotesApi.uploadAttachment(token, file);
+        setAttachments(prev => [...prev, res.data]);
+      } catch {
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemove = async (attachment: AttachmentDto) => {
+    try {
+      await quotesApi.deleteAttachment(token, attachment.id);
+      setAttachments(prev => prev.filter(a => a.id !== attachment.id));
+    } catch {
+      toast.error('Failed to remove file');
+    }
+  };
+
+  const isImage = (mime: string) => mime.startsWith('image/');
+  const isVideo = (mime: string) => mime.startsWith('video/');
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <h2 className="text-base font-semibold text-gray-900 mb-1">
+        Media & Attachments
+        <OptionalBadge />
+      </h2>
+      <p className="text-xs text-gray-500 mb-4">Photos, videos, PDFs — up to 100 MB per file</p>
+
+      {attachments.length > 0 && (
+        <ul className="mb-4 space-y-2">
+          {attachments.map(a => (
+            <li key={a.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 border border-gray-200">
+              {isImage(a.mimeType) ? (
+                <img src={`http://localhost:5000${a.url}`} alt={a.filename} className="w-12 h-12 rounded object-cover flex-shrink-0" />
+              ) : isVideo(a.mimeType) ? (
+                <video src={`http://localhost:5000${a.url}`} className="w-12 h-12 rounded object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-12 h-12 rounded bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <PaperClipIcon className="w-5 h-5 text-red-500" />
+                </div>
+              )}
+              <span className="text-sm text-gray-700 truncate flex-1">{a.filename}</span>
+              <button type="button" onClick={() => handleRemove(a)} className="p-1 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept={ACCEPTED_TYPES}
+        className="hidden"
+        onChange={e => handleFiles(e.target.files)}
+      />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-dashed border-gray-300 text-sm text-gray-600 hover:border-brand-400 hover:text-brand-600 transition-colors w-full justify-center"
+      >
+        <ArrowUpTrayIcon className="w-4 h-4" />
+        {uploading ? 'Uploading…' : 'Upload photos, videos, or PDFs'}
+      </button>
+    </div>
   );
 }
 
@@ -200,7 +286,10 @@ export default function QuoteSubmitPage() {
                 </div>
               </div>
 
-              {/* Section 2 — Scheduling */}
+              {/* Section 2 — Attachments */}
+              <AttachmentsSection token={token!} />
+
+              {/* Section 3 — Scheduling */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <h2 className="text-base font-semibold text-gray-900 mb-4">
                   Scheduling
@@ -250,7 +339,7 @@ export default function QuoteSubmitPage() {
                 </div>
               </div>
 
-              {/* Section 3 — Financial Details */}
+              {/* Section 4 — Financial Details */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <h2 className="text-base font-semibold text-gray-900 mb-4">
                   Financial Details
@@ -370,7 +459,7 @@ export default function QuoteSubmitPage() {
                 </div>
               </div>
 
-              {/* Section 4 — Scope Clarity */}
+              {/* Section 5 — Scope Clarity */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <h2 className="text-base font-semibold text-gray-900 mb-4">
                   Scope Clarity
@@ -398,7 +487,7 @@ export default function QuoteSubmitPage() {
                 </div>
               </div>
 
-              {/* Section 5 — Quote Validity */}
+              {/* Section 6 — Quote Validity */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <h2 className="text-base font-semibold text-gray-900 mb-4">
                   Quote Validity

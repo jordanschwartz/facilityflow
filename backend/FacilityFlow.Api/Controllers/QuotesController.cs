@@ -189,6 +189,75 @@ public class QuotesController : ControllerBase
         });
     }
 
+    [HttpPost("api/quotes/submit/{token}/attachments")]
+    [AllowAnonymous]
+    [RequestSizeLimit(104_857_600)] // 100 MB
+    public async Task<IActionResult> UploadAttachment(string token, IFormFile file, IWebHostEnvironment env)
+    {
+        var quote = await _db.Quotes
+            .FirstOrDefaultAsync(q => q.PublicToken == token)
+            ?? throw new NotFoundException("Quote not found.");
+
+        if (quote.Status != QuoteStatus.Requested)
+            return BadRequest("Quote is no longer accepting attachments.");
+
+        var allowed = new[] { "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic",
+                               "video/mp4", "video/quicktime", "video/x-msvideo",
+                               "application/pdf" };
+        if (!allowed.Contains(file.ContentType))
+            return BadRequest("File type not allowed. Accepted: images, videos, PDF.");
+
+        var uploadsDir = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", quote.Id.ToString());
+        Directory.CreateDirectory(uploadsDir);
+
+        var ext = Path.GetExtension(file.FileName);
+        var safeFilename = Guid.NewGuid().ToString("N") + ext;
+        var filePath = Path.Combine(uploadsDir, safeFilename);
+
+        await using (var stream = System.IO.File.Create(filePath))
+            await file.CopyToAsync(stream);
+
+        var attachment = new Core.Entities.Attachment
+        {
+            Id = Guid.NewGuid(),
+            QuoteId = quote.Id,
+            Filename = file.FileName,
+            MimeType = file.ContentType,
+            Url = $"/uploads/{quote.Id}/{safeFilename}",
+        };
+
+        _db.Attachments.Add(attachment);
+        await _db.SaveChangesAsync();
+
+        return Ok(new AttachmentDto(attachment.Id, attachment.Url, attachment.Filename, attachment.MimeType));
+    }
+
+    [HttpDelete("api/quotes/submit/{token}/attachments/{attachmentId:guid}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DeleteAttachment(string token, Guid attachmentId, IWebHostEnvironment env)
+    {
+        var quote = await _db.Quotes
+            .FirstOrDefaultAsync(q => q.PublicToken == token)
+            ?? throw new NotFoundException("Quote not found.");
+
+        if (quote.Status != QuoteStatus.Requested)
+            return BadRequest("Quote is no longer accepting changes.");
+
+        var attachment = await _db.Attachments
+            .FirstOrDefaultAsync(a => a.Id == attachmentId && a.QuoteId == quote.Id)
+            ?? throw new NotFoundException("Attachment not found.");
+
+        var webRoot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+        var filePath = Path.Combine(webRoot, attachment.Url.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+        if (System.IO.File.Exists(filePath))
+            System.IO.File.Delete(filePath);
+
+        _db.Attachments.Remove(attachment);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     [HttpPost("api/quotes/submit/{token}")]
     [AllowAnonymous]
     public async Task<IActionResult> SubmitByToken(string token, [FromBody] SubmitQuoteRequest req)

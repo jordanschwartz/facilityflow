@@ -120,6 +120,15 @@ var app = builder.Build();
 // ---- CORS (must be first) ----
 app.UseCors("FrontendPolicy");
 
+// ---- Static Files (uploads) ----
+var wwwroot = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(Path.Combine(wwwroot, "uploads"));
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(wwwroot),
+    RequestPath = ""
+});
+
 // ---- Exception Handling ----
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
