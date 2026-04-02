@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { proposalsApi } from '../../api/proposals';
-import type { Quote, Proposal, AttachmentDto } from '../../types';
+import type { Quote, Proposal, AttachmentDto, ProposalLineItemInput } from '../../types';
 import Button from '../ui/Button';
 import { formatCurrency } from '../../utils/formatters';
 import ProposalPreviewModal from './ProposalPreviewModal';
@@ -22,6 +22,8 @@ import {
   PhotoIcon,
   ExclamationTriangleIcon,
   ArrowDownTrayIcon,
+  PlusIcon,
+  TrashIcon,
 } from '@heroicons/react/24/solid';
 import { ClockIcon } from '@heroicons/react/24/outline';
 
@@ -104,21 +106,57 @@ export default function ProposalBuilder({
   const scopeOfWork = watch('scopeOfWork');
   const summary = watch('summary');
 
-  const clientPrice = useMemo(
-    () => vendorCost * (1 + (marginPercentage || 0) / 100),
-    [vendorCost, marginPercentage]
+  const [manualPrice, setManualPrice] = useState<number | null>(
+    existingProposal ? existingProposal.price : null
   );
 
-  const marginAmount = useMemo(() => clientPrice - vendorCost, [clientPrice, vendorCost]);
+  const [proposalNumber, setProposalNumber] = useState<string>(
+    existingProposal?.proposalNumber ?? ''
+  );
+
+  const [lineItems, setLineItems] = useState<ProposalLineItemInput[]>(
+    existingProposal?.lineItems?.map(li => ({
+      description: li.description,
+      quantity: li.quantity,
+      unitPrice: li.unitPrice,
+      sortOrder: li.sortOrder,
+    })) ?? []
+  );
+
+  const calculatedPrice = vendorCost * (1 + (marginPercentage || 0) / 100);
+  const clientPrice = manualPrice ?? calculatedPrice;
+  const marginAmount = clientPrice - vendorCost;
+  const effectiveMargin = vendorCost > 0 ? ((clientPrice - vendorCost) / vendorCost) * 100 : 0;
 
   // All attachments from the quote
   const quoteAttachments = quote.attachments ?? [];
+
+  // Line item helpers
+  const lineItemsSubtotal = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPrice, 0);
+
+  const addLineItem = () => {
+    setLineItems(prev => [
+      ...prev,
+      { description: '', quantity: 1, unitPrice: 0, sortOrder: prev.length },
+    ]);
+  };
+
+  const updateLineItem = (index: number, field: keyof ProposalLineItemInput, value: string | number) => {
+    setLineItems(prev =>
+      prev.map((li, i) => (i === index ? { ...li, [field]: value } : li))
+    );
+  };
+
+  const removeLineItem = (index: number) => {
+    setLineItems(prev => prev.filter((_, i) => i !== index).map((li, i) => ({ ...li, sortOrder: i })));
+  };
 
   const createProposal = useMutation({
     mutationFn: (data: ProposalFormData) =>
       proposalsApi.create(serviceRequestId, {
         quoteId: quote.id,
         marginPercentage: data.marginPercentage,
+        price: manualPrice ?? undefined,
         scopeOfWork: data.scopeOfWork,
         summary: data.summary || undefined,
         useNtePricing: data.useNtePricing,
@@ -128,6 +166,8 @@ export default function ProposalBuilder({
         termsAndConditions: data.termsAndConditions || undefined,
         internalNotes: data.internalNotes || undefined,
         attachmentIds: data.attachmentIds,
+        proposalNumber: proposalNumber || undefined,
+        lineItems: lineItems.length > 0 ? lineItems : undefined,
       }),
     onSuccess: () => {
       toast.success('Proposal saved as draft');
@@ -142,6 +182,7 @@ export default function ProposalBuilder({
     mutationFn: (data: ProposalFormData) =>
       proposalsApi.update(existingProposal!.id, {
         marginPercentage: data.marginPercentage,
+        price: manualPrice ?? undefined,
         scopeOfWork: data.scopeOfWork,
         summary: data.summary || undefined,
         useNtePricing: data.useNtePricing,
@@ -151,6 +192,8 @@ export default function ProposalBuilder({
         termsAndConditions: data.termsAndConditions || undefined,
         internalNotes: data.internalNotes || undefined,
         attachmentIds: data.attachmentIds,
+        proposalNumber: proposalNumber || undefined,
+        lineItems: lineItems.length > 0 ? lineItems : undefined,
       }),
     onSuccess: () => {
       toast.success('Proposal updated');
@@ -245,11 +288,35 @@ export default function ProposalBuilder({
     serviceRequest: existingProposal?.serviceRequest
       ? { title: existingProposal.serviceRequest.title, location: '', category: '' }
       : { title: 'Service Request', location: '', category: '' },
+    proposalNumber: proposalNumber || null,
+    lineItems: lineItems.map((li, i) => ({
+      id: `preview-${i}`,
+      description: li.description,
+      quantity: li.quantity,
+      unitPrice: li.unitPrice,
+      total: li.quantity * li.unitPrice,
+      sortOrder: li.sortOrder,
+    })),
   };
 
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit(onSubmit)}>
+        {/* Proposal Number */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <DocumentTextIcon className="w-5 h-5 text-brand-600" />
+            <h3 className="text-base font-semibold text-gray-900">Proposal Number</h3>
+          </div>
+          <input
+            type="text"
+            value={proposalNumber}
+            onChange={e => setProposalNumber(e.target.value)}
+            placeholder="e.g. PROP-001"
+            className="block w-full max-w-xs rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
+          />
+        </div>
+
         {/* Section 1: Pricing & Margin */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
@@ -267,12 +334,44 @@ export default function ProposalBuilder({
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">+ Margin</p>
-                <p className="text-lg font-bold text-amber-600">{marginPercentage}%</p>
+                <p className="text-lg font-bold text-amber-600">{effectiveMargin.toFixed(1)}%</p>
                 <p className="text-xs text-gray-400">{formatCurrency(marginAmount)}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Client Price</p>
-                <p className="text-lg font-bold text-green-700">{formatCurrency(clientPrice)}</p>
+                <div className="relative inline-block">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-green-700 font-bold text-sm">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={manualPrice ?? calculatedPrice.toFixed(2)}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val) && val >= 0) {
+                        setManualPrice(val);
+                        // Back-calculate margin
+                        if (vendorCost > 0) {
+                          const newMargin = ((val - vendorCost) / vendorCost) * 100;
+                          setValue('marginPercentage', Math.round(newMargin * 10) / 10);
+                        }
+                      }
+                    }}
+                    className="w-32 text-center text-lg font-bold text-green-700 bg-white rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 pl-6 pr-2 py-1"
+                  />
+                </div>
+                {manualPrice !== null && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManualPrice(null);
+                      setValue('marginPercentage', existingProposal?.marginPercentage ?? 25);
+                    }}
+                    className="block mx-auto mt-1 text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    Reset to calculated
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -292,7 +391,10 @@ export default function ProposalBuilder({
                       max="50"
                       step="1"
                       value={field.value}
-                      onChange={e => field.onChange(parseFloat(e.target.value))}
+                      onChange={e => {
+                        field.onChange(parseFloat(e.target.value));
+                        setManualPrice(null);
+                      }}
                       className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
                     />
                     <div className="relative w-24">
@@ -302,7 +404,10 @@ export default function ProposalBuilder({
                         max="100"
                         step="0.5"
                         value={field.value}
-                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={e => {
+                          field.onChange(parseFloat(e.target.value) || 0);
+                          setManualPrice(null);
+                        }}
                         className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2 pr-8"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
@@ -360,6 +465,97 @@ export default function ProposalBuilder({
               </div>
             )}
           </div>
+        </div>
+
+        {/* Line Items */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CurrencyDollarIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-base font-semibold text-gray-900">Line Items</h3>
+            </div>
+            <button
+              type="button"
+              onClick={addLineItem}
+              className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+            >
+              <PlusIcon className="w-4 h-4" /> Add Item
+            </button>
+          </div>
+
+          {lineItems.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">No line items added. Click "Add Item" to itemize costs.</p>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="grid grid-cols-12 gap-2 mb-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div className="col-span-5">Description</div>
+                <div className="col-span-2 text-right">Qty</div>
+                <div className="col-span-2 text-right">Unit Price</div>
+                <div className="col-span-2 text-right">Total</div>
+                <div className="col-span-1" />
+              </div>
+
+              {/* Rows */}
+              {lineItems.map((li, index) => (
+                <div key={index} className="grid grid-cols-12 gap-2 mb-2 items-center">
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      value={li.description}
+                      onChange={e => updateLineItem(index, 'description', e.target.value)}
+                      placeholder="Description"
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={li.quantity}
+                      onChange={e => updateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2 text-right"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={li.unitPrice}
+                        onChange={e => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border pl-7 pr-3 py-2 text-right"
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-2 text-right text-sm font-medium text-gray-900 pr-2">
+                    {formatCurrency(li.quantity * li.unitPrice)}
+                  </div>
+                  <div className="col-span-1 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => removeLineItem(index)}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Subtotal */}
+              <div className="grid grid-cols-12 gap-2 mt-3 pt-3 border-t border-gray-200">
+                <div className="col-span-9 text-right text-sm font-semibold text-gray-700">Subtotal</div>
+                <div className="col-span-2 text-right text-sm font-bold text-gray-900 pr-2">
+                  {formatCurrency(lineItemsSubtotal)}
+                </div>
+                <div className="col-span-1" />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Section 2: Scope & Summary */}

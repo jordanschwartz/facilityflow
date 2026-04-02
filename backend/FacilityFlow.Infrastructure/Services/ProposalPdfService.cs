@@ -29,6 +29,7 @@ public class ProposalPdfService : IProposalPdfService
         var proposal = await _proposals.Query()
             .Include(p => p.ServiceRequest).ThenInclude(sr => sr.Client).ThenInclude(c => c.User)
             .Include(p => p.Quote).ThenInclude(q => q.LineItems)
+            .Include(p => p.LineItems)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
             ?? throw new NotFoundException("Proposal not found.");
 
@@ -52,7 +53,9 @@ public class ProposalPdfService : IProposalPdfService
 
     private static void ComposeHeader(IContainer container, Proposal proposal)
     {
-        var proposalNumber = $"PROP-{proposal.Id.ToString("N")[..8].ToUpper()}";
+        var proposalNumber = !string.IsNullOrWhiteSpace(proposal.ProposalNumber)
+            ? proposal.ProposalNumber
+            : $"PROP-{proposal.Id.ToString("N")[..8].ToUpper()}";
         var date = proposal.SentAt ?? DateTime.UtcNow;
 
         container.Column(col =>
@@ -92,7 +95,16 @@ public class ProposalPdfService : IProposalPdfService
     {
         var sr = proposal.ServiceRequest;
         var client = sr.Client;
-        var lineItems = proposal.Quote.LineItems.ToList();
+
+        // Use proposal's own line items if present, otherwise fall back to quote line items
+        var hasProposalLineItems = proposal.LineItems.Count > 0;
+        var lineItems = hasProposalLineItems
+            ? proposal.LineItems.OrderBy(li => li.SortOrder)
+                .Select(li => new { li.Description, li.Quantity, li.UnitPrice })
+                .ToList()
+            : proposal.Quote.LineItems
+                .Select(li => new { li.Description, li.Quantity, li.UnitPrice })
+                .ToList();
 
         container.PaddingTop(4).Column(col =>
         {

@@ -23,6 +23,12 @@ public class GetProposalByTokenQueryHandler : IRequestHandler<GetProposalByToken
             new ClientProposalAttachmentDto(pa.Attachment.Id, pa.Attachment.Filename, pa.Attachment.Url))
             .ToList();
 
+        var lineItems = proposal.LineItems
+            .OrderBy(li => li.SortOrder)
+            .Select(li => new ProposalLineItemDto(
+                li.Id, li.Description, li.Quantity, li.UnitPrice, li.Quantity * li.UnitPrice, li.SortOrder))
+            .ToList();
+
         var serviceRequestDto = new ClientProposalServiceRequestDto(
             proposal.ServiceRequest.Title,
             proposal.ServiceRequest.Location,
@@ -42,6 +48,8 @@ public class GetProposalByTokenQueryHandler : IRequestHandler<GetProposalByToken
             proposal.SentAt,
             proposal.ClientResponse,
             proposal.ClientRespondedAt,
+            proposal.ProposalNumber,
+            lineItems,
             attachments,
             serviceRequestDto);
     }

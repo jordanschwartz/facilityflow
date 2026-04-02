@@ -28,6 +28,8 @@ public record ProposalDto(
     DateTime? ClientRespondedAt,
     ServiceRequestSummaryDto ServiceRequest,
     QuoteSummaryDto Quote,
+    string? ProposalNumber,
+    List<ProposalLineItemDto> LineItems,
     List<ProposalAttachmentDto> Attachments,
     List<ProposalVersionDto> Versions);
 

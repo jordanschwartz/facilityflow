@@ -17,17 +17,20 @@ public class UpdateProposalCommandHandler : IRequestHandler<UpdateProposalComman
     private readonly IProposalRepository _proposals;
     private readonly IRepository<ProposalVersion> _versions;
     private readonly IRepository<ProposalAttachment> _proposalAttachments;
+    private readonly IRepository<ProposalLineItem> _lineItems;
     private readonly IActivityLogger _activityLogger;
 
     public UpdateProposalCommandHandler(
         IProposalRepository proposals,
         IRepository<ProposalVersion> versions,
         IRepository<ProposalAttachment> proposalAttachments,
+        IRepository<ProposalLineItem> lineItems,
         IActivityLogger activityLogger)
     {
         _proposals = proposals;
         _versions = versions;
         _proposalAttachments = proposalAttachments;
+        _lineItems = lineItems;
         _activityLogger = activityLogger;
     }
 
@@ -37,6 +40,7 @@ public class UpdateProposalCommandHandler : IRequestHandler<UpdateProposalComman
 
         var proposal = await _proposals.Query()
             .Include(p => p.Attachments)
+            .Include(p => p.LineItems)
             .FirstOrDefaultAsync(p => p.Id == command.Id, cancellationToken)
             ?? throw new NotFoundException("Proposal not found.");
 
@@ -53,7 +57,11 @@ public class UpdateProposalCommandHandler : IRequestHandler<UpdateProposalComman
         if (req.MarginPercentage.HasValue)
         {
             proposal.MarginPercentage = req.MarginPercentage.Value;
-            proposal.Price = proposal.VendorCost * (1 + req.MarginPercentage.Value / 100m);
+            proposal.Price = req.Price ?? proposal.VendorCost * (1 + req.MarginPercentage.Value / 100m);
+        }
+        else if (req.Price.HasValue)
+        {
+            proposal.Price = req.Price.Value;
         }
 
         if (req.ScopeOfWork != null) proposal.ScopeOfWork = req.ScopeOfWork;
@@ -64,6 +72,24 @@ public class UpdateProposalCommandHandler : IRequestHandler<UpdateProposalComman
         if (req.EstimatedDuration != null) proposal.EstimatedDuration = req.EstimatedDuration;
         if (req.TermsAndConditions != null) proposal.TermsAndConditions = req.TermsAndConditions;
         if (req.InternalNotes != null) proposal.InternalNotes = req.InternalNotes;
+        if (req.ProposalNumber != null) proposal.ProposalNumber = req.ProposalNumber;
+
+        if (req.LineItems != null)
+        {
+            _lineItems.RemoveRange(proposal.LineItems);
+            foreach (var item in req.LineItems)
+            {
+                _lineItems.Add(new ProposalLineItem
+                {
+                    Id = Guid.NewGuid(),
+                    ProposalId = proposal.Id,
+                    Description = item.Description,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    SortOrder = item.SortOrder,
+                });
+            }
+        }
 
         if (req.AttachmentIds != null)
         {

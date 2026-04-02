@@ -66,6 +66,12 @@ public class GetProposalByIdQueryHandler : IRequestHandler<GetProposalByIdQuery,
                 v.Summary, v.NotToExceedPrice, v.CreatedAt, v.ChangeNotes))
             .ToList();
 
+        var lineItems = proposal.LineItems
+            .OrderBy(li => li.SortOrder)
+            .Select(li => new ProposalLineItemDto(
+                li.Id, li.Description, li.Quantity, li.UnitPrice, li.Quantity * li.UnitPrice, li.SortOrder))
+            .ToList();
+
         return new ProposalDto(
             proposal.Id,
             proposal.ServiceRequestId,
@@ -90,6 +96,8 @@ public class GetProposalByIdQueryHandler : IRequestHandler<GetProposalByIdQuery,
             proposal.ClientRespondedAt,
             srSummary,
             quoteSummary,
+            proposal.ProposalNumber,
+            lineItems,
             attachments,
             versions
         );

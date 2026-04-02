@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<QuoteLineItem> QuoteLineItems => Set<QuoteLineItem>();
     public DbSet<Proposal> Proposals => Set<Proposal>();
     public DbSet<ProposalAttachment> ProposalAttachments => Set<ProposalAttachment>();
+    public DbSet<ProposalLineItem> ProposalLineItems => Set<ProposalLineItem>();
     public DbSet<ProposalVersion> ProposalVersions => Set<ProposalVersion>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<Comment> Comments => Set<Comment>();
@@ -125,6 +126,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ProposalVersion>().Property(pv => pv.VendorCost).HasPrecision(18, 2);
         modelBuilder.Entity<ProposalVersion>().Property(pv => pv.MarginPercentage).HasPrecision(5, 2);
         modelBuilder.Entity<ProposalVersion>().Property(pv => pv.NotToExceedPrice).HasPrecision(18, 2);
+
+        // ProposalLineItem relationships
+        modelBuilder.Entity<ProposalLineItem>()
+            .HasOne(li => li.Proposal).WithMany(p => p.LineItems).HasForeignKey(li => li.ProposalId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProposalLineItem>().Property(li => li.Quantity).HasPrecision(18, 4);
+        modelBuilder.Entity<ProposalLineItem>().Property(li => li.UnitPrice).HasPrecision(18, 2);
 
         modelBuilder.Entity<Vendor>().Property(v => v.Rating).HasPrecision(3, 2);
         modelBuilder.Entity<VendorPayment>().Property(vp => vp.Amount).HasPrecision(18, 2);

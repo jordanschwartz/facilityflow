@@ -82,6 +82,8 @@ export default function ProposalDetail({ proposal, serviceRequestId, onEdit }: P
       location: '',
       category: '',
     },
+    proposalNumber: proposal.proposalNumber,
+    lineItems: proposal.lineItems ?? [],
   };
 
   return (

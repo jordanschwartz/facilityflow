@@ -16,6 +16,7 @@ public class ProposalRepository : Repository<Proposal>, IProposalRepository
             .Include(p => p.ServiceRequest).ThenInclude(sr => sr.Quotes)
             .Include(p => p.ServiceRequest).ThenInclude(sr => sr.WorkOrder)
             .Include(p => p.Quote)
+            .Include(p => p.LineItems)
             .Include(p => p.Attachments).ThenInclude(pa => pa.Attachment)
             .Include(p => p.Versions)
             .FirstOrDefaultAsync(p => p.Id == id);
@@ -25,6 +26,7 @@ public class ProposalRepository : Repository<Proposal>, IProposalRepository
     {
         return await DbSet
             .Include(p => p.ServiceRequest)
+            .Include(p => p.LineItems)
             .Include(p => p.Attachments).ThenInclude(pa => pa.Attachment)
             .FirstOrDefaultAsync(p => p.PublicToken == token);
     }

@@ -174,6 +174,22 @@ export interface QuoteLineItem {
   total: number;
 }
 
+export interface ProposalLineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  sortOrder: number;
+}
+
+export interface ProposalLineItemInput {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  sortOrder: number;
+}
+
 export interface Quote {
   id: string; serviceRequestId: string; vendorId: string;
   price: number; scopeOfWork: string; status: QuoteStatus;
@@ -245,6 +261,8 @@ export interface Proposal {
   quote: ProposalQuoteSummary;
   attachments: ProposalAttachment[];
   versions: ProposalVersion[];
+  lineItems: ProposalLineItem[];
+  proposalNumber: string | null;
 }
 
 export interface ClientProposal {
@@ -263,11 +281,14 @@ export interface ClientProposal {
   clientRespondedAt?: string;
   attachments: { id: string; fileName: string; filePath: string }[];
   serviceRequest: { title: string; location: string; category: string };
+  lineItems: ProposalLineItem[];
+  proposalNumber: string | null;
 }
 
 export interface CreateProposalRequest {
   quoteId: string;
   marginPercentage: number;
+  price?: number;
   scopeOfWork: string;
   summary?: string;
   notToExceedPrice?: number;
@@ -277,10 +298,13 @@ export interface CreateProposalRequest {
   termsAndConditions?: string;
   internalNotes?: string;
   attachmentIds?: string[];
+  proposalNumber?: string;
+  lineItems?: ProposalLineItemInput[];
 }
 
 export interface UpdateProposalRequest {
   marginPercentage?: number;
+  price?: number;
   scopeOfWork?: string;
   summary?: string;
   notToExceedPrice?: number;
@@ -291,6 +315,8 @@ export interface UpdateProposalRequest {
   internalNotes?: string;
   attachmentIds?: string[];
   changeNotes?: string;
+  proposalNumber?: string;
+  lineItems?: ProposalLineItemInput[];
 }
 
 export interface WorkOrder {

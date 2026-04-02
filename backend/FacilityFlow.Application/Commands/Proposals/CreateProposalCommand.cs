@@ -61,7 +61,7 @@ public class CreateProposalCommandHandler : IRequestHandler<CreateProposalComman
             ?? throw new NotFoundException("Quote not found.");
 
         var vendorCost = quote.Price;
-        var price = vendorCost * (1 + req.MarginPercentage / 100m);
+        var price = req.Price ?? vendorCost * (1 + req.MarginPercentage / 100m);
 
         var proposal = new Proposal
         {
@@ -84,6 +84,24 @@ public class CreateProposalCommandHandler : IRequestHandler<CreateProposalComman
             Version = 1,
             PublicToken = "pr-" + Guid.NewGuid().ToString("N")
         };
+
+        proposal.ProposalNumber = req.ProposalNumber;
+
+        if (req.LineItems != null)
+        {
+            foreach (var item in req.LineItems)
+            {
+                proposal.LineItems.Add(new ProposalLineItem
+                {
+                    Id = Guid.NewGuid(),
+                    ProposalId = proposal.Id,
+                    Description = item.Description,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    SortOrder = item.SortOrder,
+                });
+            }
+        }
 
         _proposals.Add(proposal);
 

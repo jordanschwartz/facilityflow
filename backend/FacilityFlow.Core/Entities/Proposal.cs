@@ -28,6 +28,8 @@ public class Proposal
     public ServiceRequest ServiceRequest { get; set; } = null!;
     public Quote Quote { get; set; } = null!;
     public WorkOrder? WorkOrder { get; set; }
+    public string? ProposalNumber { get; set; }
+    public ICollection<ProposalLineItem> LineItems { get; set; } = new List<ProposalLineItem>();
     public ICollection<ProposalAttachment> Attachments { get; set; } = new List<ProposalAttachment>();
     public ICollection<ProposalVersion> Versions { get; set; } = new List<ProposalVersion>();
 }

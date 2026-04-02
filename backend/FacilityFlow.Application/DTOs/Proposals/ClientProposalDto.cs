@@ -16,6 +16,8 @@ public record ClientProposalDto(
     DateTime? SentAt,
     string? ClientResponse,
     DateTime? ClientRespondedAt,
+    string? ProposalNumber,
+    List<ProposalLineItemDto> LineItems,
     List<ClientProposalAttachmentDto> Attachments,
     ClientProposalServiceRequestDto ServiceRequest);
 

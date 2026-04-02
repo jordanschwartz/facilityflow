@@ -2,6 +2,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useState } from 'react';
 import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import type { ProposalLineItem } from '../../types';
 
 interface PreviewAttachment {
   id: string;
@@ -20,6 +21,8 @@ interface PreviewProposal {
   termsAndConditions: string | null;
   attachments: PreviewAttachment[];
   serviceRequest: { title: string; location: string; category: string };
+  proposalNumber?: string | null;
+  lineItems?: ProposalLineItem[];
 }
 
 interface ProposalPreviewModalProps {
@@ -115,7 +118,12 @@ export function ProposalPreviewContent({
 
       {/* Proposal Card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 mb-6">
-        <h1 className="text-xl font-bold text-gray-900 mb-1">{proposal.serviceRequest.title}</h1>
+        <div className="flex items-start justify-between mb-1">
+          <h1 className="text-xl font-bold text-gray-900">{proposal.serviceRequest.title}</h1>
+          {proposal.proposalNumber && (
+            <span className="text-sm font-medium text-gray-500 flex-shrink-0 ml-4">{proposal.proposalNumber}</span>
+          )}
+        </div>
         {(proposal.serviceRequest.location || proposal.serviceRequest.category) && (
           <p className="text-sm text-gray-500 mb-6">
             {[proposal.serviceRequest.location, proposal.serviceRequest.category].filter(Boolean).join(' / ')}
@@ -141,6 +149,43 @@ export function ProposalPreviewContent({
             <p className="text-xs text-brand-600 mt-1">Estimated price: {formatCurrency(proposal.price)}</p>
           )}
         </div>
+
+        {/* Line Items */}
+        {proposal.lineItems && proposal.lineItems.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">Line Items</h2>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                    <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                    <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {proposal.lineItems.map((li, i) => (
+                    <tr key={li.id || i}>
+                      <td className="px-4 py-2 text-gray-700">{li.description}</td>
+                      <td className="px-4 py-2 text-right text-gray-700">{li.quantity}</td>
+                      <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(li.unitPrice)}</td>
+                      <td className="px-4 py-2 text-right font-medium text-gray-900">{formatCurrency(li.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50">
+                  <tr>
+                    <td colSpan={3} className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Subtotal</td>
+                    <td className="px-4 py-2 text-right text-sm font-bold text-gray-900">
+                      {formatCurrency(proposal.lineItems.reduce((sum, li) => sum + li.total, 0))}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Scope */}
         <div className="mb-6">
