@@ -40,14 +40,14 @@ public class UpdateProposalCommandHandler : IRequestHandler<UpdateProposalComman
             .FirstOrDefaultAsync(p => p.Id == command.Id, cancellationToken)
             ?? throw new NotFoundException("Proposal not found.");
 
-        if (proposal.Status == ProposalStatus.Sent)
+        if (proposal.Status == ProposalStatus.Sent || proposal.Status == ProposalStatus.Rejected)
         {
             CreateVersionSnapshot(proposal, req.ChangeNotes);
             proposal.Status = ProposalStatus.Draft;
         }
         else if (proposal.Status != ProposalStatus.Draft)
         {
-            throw new InvalidOperationException("Only draft or sent proposals can be updated.");
+            throw new InvalidOperationException("Only draft, sent, or rejected proposals can be updated.");
         }
 
         if (req.MarginPercentage.HasValue)
