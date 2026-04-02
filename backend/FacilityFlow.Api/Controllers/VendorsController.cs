@@ -106,7 +106,7 @@ public class VendorsController : ControllerBase
             Phone = req.Phone ?? string.Empty,
             PrimaryZip = req.PrimaryZip.Trim(),
             ServiceRadiusMiles = req.ServiceRadiusMiles,
-            Trades = req.Trades,
+            Trades = req.Trades ?? [],
             ZipCodes = req.ZipCodes ?? [],
             IsActive = req.IsActive,
             IsDnu = req.IsDnu,
@@ -136,7 +136,7 @@ public class VendorsController : ControllerBase
         vendor.Phone = req.Phone ?? string.Empty;
         vendor.PrimaryZip = req.PrimaryZip.Trim();
         vendor.ServiceRadiusMiles = req.ServiceRadiusMiles;
-        vendor.Trades = req.Trades;
+        vendor.Trades = req.Trades ?? vendor.Trades;
         vendor.ZipCodes = req.ZipCodes ?? vendor.ZipCodes;
         vendor.IsActive = req.IsActive;
 

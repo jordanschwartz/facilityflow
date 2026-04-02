@@ -8,7 +8,7 @@ public record CreateVendorRequest(
     string? Phone,
     string PrimaryZip,
     int ServiceRadiusMiles,
-    List<string> Trades,
+    List<string>? Trades,
     List<string>? ZipCodes,
     bool IsActive = true,
     bool IsDnu = false,
