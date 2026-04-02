@@ -91,28 +91,28 @@ export default function RequestListPage() {
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <tr className="bg-gray-100 border-b border-gray-300">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Title</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Client</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Category</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Priority</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Created</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredItems.map(item => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {filteredItems.map((item, idx) => (
+                <tr key={item.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                  <td className="px-4 py-2.5">
                     <p className="text-sm font-medium text-gray-900">{item.title}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.client?.companyName}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">—</td>
-                  <td className="px-6 py-4"><PriorityBadge priority={item.priority} /></td>
-                  <td className="px-6 py-4"><StatusBadge status={item.status} /></td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{formatDate(item.createdAt)}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-2.5 text-sm text-gray-600">{item.client?.companyName}</td>
+                  <td className="px-4 py-2.5 text-sm text-gray-600">—</td>
+                  <td className="px-4 py-2.5"><PriorityBadge priority={item.priority} /></td>
+                  <td className="px-4 py-2.5"><StatusBadge status={item.status} /></td>
+                  <td className="px-4 py-2.5 text-sm text-gray-500">{formatDate(item.createdAt)}</td>
+                  <td className="px-4 py-2.5 text-right">
                     <Link to={`/requests/${item.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">
                       View
                     </Link>

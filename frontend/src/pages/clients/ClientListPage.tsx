@@ -56,23 +56,23 @@ export default function ClientListPage() {
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <tr className="bg-gray-100 border-b border-gray-300">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Address</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {items.map(client => (
-                <tr key={client.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {items.map((client, idx) => (
+                <tr key={client.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                  <td className="px-4 py-2.5">
                     <p className="text-sm font-medium text-gray-900">{client.companyName}</p>
                     <p className="text-xs text-gray-500">{client.user?.email}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{client.phone}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{client.address}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-2.5 text-sm text-gray-600">{client.phone}</td>
+                  <td className="px-4 py-2.5 text-sm text-gray-600">{client.address}</td>
+                  <td className="px-4 py-2.5 text-right">
                     <Link to={`/clients/${client.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">View</Link>
                   </td>
                 </tr>

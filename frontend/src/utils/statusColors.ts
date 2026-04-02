@@ -17,6 +17,9 @@ export const statusColors: Record<string, string> = {
   Sent: 'bg-blue-100 text-blue-700',
   Viewed: 'bg-indigo-100 text-indigo-700',
   Revised: 'bg-amber-100 text-amber-700',
+  // Invoice
+  Paid: 'bg-green-100 text-green-700',
+  Cancelled: 'bg-red-100 text-red-700',
   // WorkOrder
   Assigned: 'bg-blue-100 text-blue-700',
   InProgress: 'bg-yellow-100 text-yellow-700',

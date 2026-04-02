@@ -21,6 +21,8 @@ import WorkOrderListPage from './pages/workorders/WorkOrderListPage';
 import WorkOrderDetailPage from './pages/workorders/WorkOrderDetailPage';
 import QuoteSubmitPage from './pages/public/QuoteSubmitPage';
 import ProposalViewPage from './pages/public/ProposalViewPage';
+import InvoiceListPage from './pages/invoices/InvoiceListPage';
+import InvoiceDetailPage from './pages/invoices/InvoiceDetailPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30000, retry: 1 } }
@@ -66,6 +68,8 @@ export default function App() {
             <Route path="clients/:id" element={<ClientDetailPage />} />
             <Route path="work-orders" element={<WorkOrderListPage />} />
             <Route path="work-orders/:id" element={<WorkOrderDetailPage />} />
+            <Route path="invoices" element={<InvoiceListPage />} />
+            <Route path="invoices/:id" element={<InvoiceDetailPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -34,6 +34,7 @@ public class ExceptionHandlingMiddleware
             ForbiddenException e           => (StatusCodes.Status403Forbidden, e.Message),
             InvalidTransitionException e   => (StatusCodes.Status422UnprocessableEntity, e.Message),
             InvalidOperationException e    => (StatusCodes.Status400BadRequest, e.Message),
+            Stripe.StripeException e       => (StatusCodes.Status502BadGateway, $"Payment service error: {e.Message}"),
             _                              => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
         };
 

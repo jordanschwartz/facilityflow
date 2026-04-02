@@ -536,30 +536,30 @@ export default function RequestDetailPage() {
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trades</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quote Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent</th>
+                  <tr className="bg-gray-100 border-b border-gray-300">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trades</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quote Price</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Sent</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {invites?.map(invite => (
-                    <tr key={invite.id}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{invite.vendor?.companyName}</td>
-                      <td className="px-6 py-4">
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {invites?.map((invite, idx) => (
+                    <tr key={invite.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                      <td className="px-4 py-2.5 text-sm font-medium text-gray-900">{invite.vendor?.companyName}</td>
+                      <td className="px-4 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {invite.vendor?.trades.map(t => (
                             <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{t}</span>
                           ))}
                         </div>
                       </td>
-                      <td className="px-6 py-4"><StatusBadge status={invite.status} /></td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-4 py-2.5"><StatusBadge status={invite.status} /></td>
+                      <td className="px-4 py-2.5 text-sm text-gray-600">
                         {invite.quote?.price != null ? formatCurrency(invite.quote.price) : '—'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{formatDate(invite.sentAt)}</td>
+                      <td className="px-4 py-2.5 text-sm text-gray-500">{formatDate(invite.sentAt)}</td>
                     </tr>
                   ))}
                 </tbody>

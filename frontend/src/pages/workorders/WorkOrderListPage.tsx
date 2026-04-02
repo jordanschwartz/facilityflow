@@ -68,27 +68,27 @@ export default function WorkOrderListPage() {
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service Request</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <tr className="bg-gray-100 border-b border-gray-300">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Service Request</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Priority</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Completed</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {items.map(wo => (
-                <tr key={wo.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {items.map((wo, idx) => (
+                <tr key={wo.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                  <td className="px-4 py-2.5">
                     <p className="text-sm font-medium text-gray-900">{wo.serviceRequest?.title}</p>
                     <p className="text-xs text-gray-500">{wo.serviceRequest?.client?.companyName}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{wo.vendor?.companyName}</td>
-                  <td className="px-6 py-4"><PriorityBadge priority={wo.serviceRequest?.priority} /></td>
-                  <td className="px-6 py-4"><StatusBadge status={wo.status} /></td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{wo.completedAt ? formatDate(wo.completedAt) : '—'}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-2.5 text-sm text-gray-600">{wo.vendor?.companyName}</td>
+                  <td className="px-4 py-2.5"><PriorityBadge priority={wo.serviceRequest?.priority} /></td>
+                  <td className="px-4 py-2.5"><StatusBadge status={wo.status} /></td>
+                  <td className="px-4 py-2.5 text-sm text-gray-500">{wo.completedAt ? formatDate(wo.completedAt) : '—'}</td>
+                  <td className="px-4 py-2.5 text-right">
                     <Link to={`/work-orders/${wo.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">View</Link>
                   </td>
                 </tr>

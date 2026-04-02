@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,6 +39,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Proposal>().Property(p => p.Status).HasConversion<string>();
         modelBuilder.Entity<WorkOrder>().Property(w => w.Status).HasConversion<string>();
         modelBuilder.Entity<VendorPayment>().Property(vp => vp.Status).HasConversion<string>();
+        modelBuilder.Entity<Invoice>().Property(i => i.Status).HasConversion<string>();
 
         // JSON columns for Vendor arrays
         modelBuilder.Entity<Vendor>().Property(v => v.Trades).HasColumnType("jsonb");
@@ -50,6 +52,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Proposal>().HasIndex(p => p.ServiceRequestId).IsUnique();
         modelBuilder.Entity<WorkOrder>().HasIndex(wo => wo.ServiceRequestId).IsUnique();
         modelBuilder.Entity<VendorInvite>().HasIndex(vi => new { vi.ServiceRequestId, vi.VendorId }).IsUnique();
+        modelBuilder.Entity<Invoice>().HasIndex(i => i.WorkOrderId).IsUnique();
+        modelBuilder.Entity<Invoice>().HasIndex(i => i.PublicToken).IsUnique();
 
         // Performance indexes
         modelBuilder.Entity<ServiceRequest>().HasIndex(sr => sr.Status);
@@ -58,6 +62,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<VendorNote>().HasIndex(vn => vn.VendorId);
         modelBuilder.Entity<VendorNote>().HasIndex(vn => vn.CreatedAt);
         modelBuilder.Entity<VendorPayment>().HasIndex(vp => vp.VendorId);
+        modelBuilder.Entity<Invoice>().HasIndex(i => i.ClientId);
+        modelBuilder.Entity<Invoice>().HasIndex(i => i.Status);
 
         // Relationships
         modelBuilder.Entity<ServiceRequest>()
@@ -117,5 +123,10 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Vendor>().Property(v => v.Rating).HasPrecision(3, 2);
         modelBuilder.Entity<VendorPayment>().Property(vp => vp.Amount).HasPrecision(18, 2);
+
+        // Invoice
+        modelBuilder.Entity<Invoice>().Property(i => i.Amount).HasPrecision(18, 2);
+        modelBuilder.Entity<Invoice>().HasOne(i => i.WorkOrder).WithMany().HasForeignKey(i => i.WorkOrderId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Invoice>().HasOne(i => i.Client).WithMany().HasForeignKey(i => i.ClientId).OnDelete(DeleteBehavior.Restrict);
     }
 }

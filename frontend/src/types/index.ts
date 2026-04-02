@@ -251,3 +251,38 @@ export interface PipelineResponse {
   columns: Record<string, PipelineColumn>;
   stats: DashboardStats;
 }
+
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Cancelled';
+
+export interface InvoiceSummary {
+  id: string; workOrderId: string;
+  clientName: string; location: string;
+  completedAt?: string; amount: number;
+  status: InvoiceStatus; sentAt?: string; paidAt?: string;
+  billToEmail: string;
+}
+
+export interface Invoice {
+  id: string; workOrderId: string; clientId: string;
+  amount: number; description: string; notes?: string;
+  billToName: string; billToEmail: string; location: string;
+  status: InvoiceStatus; publicToken: string;
+  stripeInvoiceUrl?: string;
+  sentAt?: string; paidAt?: string; createdAt: string;
+  serviceRequestTitle?: string; vendorName?: string;
+  client?: { id: string; companyName: string; phone?: string };
+}
+
+export interface BillableWorkOrder {
+  id: string; serviceRequestId: string;
+  title: string; location: string; clientName: string; clientEmail: string;
+  completedAt?: string; proposalAmount?: number; scopeOfWork?: string;
+}
+
+export interface CreateInvoiceRequest {
+  amount: number; description: string; billToName: string; billToEmail: string; notes?: string;
+}
+
+export interface UpdateInvoiceRequest {
+  amount?: number; description?: string; billToName?: string; billToEmail?: string; notes?: string;
+}

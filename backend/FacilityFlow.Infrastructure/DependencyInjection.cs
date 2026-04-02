@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IQuoteRepository, QuoteRepository>();
         services.AddScoped<IVendorRepository, VendorRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 
         // Infrastructure services
         services.AddScoped<ITokenService, TokenService>();
@@ -37,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IFileStorageService, FileStorageService>();
         services.AddHttpClient<IAiSummaryService, AiSummaryService>();
+        services.AddScoped<IStripeService, StripeService>();
 
         return services;
     }
