@@ -1,3 +1,3 @@
 namespace FacilityFlow.Core.Enums;
 
-public enum ProposalStatus { Draft, Sent, Approved, Rejected }
+public enum ProposalStatus { Draft, Sent, Viewed, Approved, Rejected, Revised }

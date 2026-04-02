@@ -20,11 +20,21 @@ public class ProposalsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly NotificationService _notifications;
+    private readonly IAiSummaryService _aiSummaryService;
 
-    public ProposalsController(AppDbContext db, NotificationService notifications)
+    private const string DefaultTermsAndConditions =
+        "1. Payment Terms: Payment is due within 30 days of work completion.\n" +
+        "2. Warranty: All work is warranted for 90 days from completion.\n" +
+        "3. Scope: This proposal covers only the work described above. Additional work will require a separate proposal.\n" +
+        "4. Scheduling: Proposed dates are estimates and subject to change based on site conditions and availability.\n" +
+        "5. Access: Client agrees to provide reasonable access to the work area during scheduled hours.\n" +
+        "6. Cancellation: Cancellation after approval may be subject to a cancellation fee for materials already procured.";
+
+    public ProposalsController(AppDbContext db, NotificationService notifications, IAiSummaryService aiSummaryService)
     {
         _db = db;
         _notifications = notifications;
+        _aiSummaryService = aiSummaryService;
     }
 
     [HttpPost("api/service-requests/{serviceRequestId:guid}/proposals")]
@@ -40,21 +50,51 @@ public class ProposalsController : ControllerBase
         if (sr.Proposal != null)
             throw new InvalidOperationException("A proposal already exists for this service request.");
 
-        var quote = await _db.Quotes.FindAsync(req.QuoteId)
+        var quote = await _db.Quotes
+            .Include(q => q.Attachments)
+            .FirstOrDefaultAsync(q => q.Id == req.QuoteId)
             ?? throw new NotFoundException("Quote not found.");
+
+        var vendorCost = quote.Price;
+        var price = vendorCost * (1 + req.MarginPercentage / 100m);
 
         var proposal = new Proposal
         {
             Id = Guid.NewGuid(),
             ServiceRequestId = serviceRequestId,
             QuoteId = req.QuoteId,
-            Price = req.Price,
-            ScopeOfWork = req.ScopeOfWork,
+            VendorCost = vendorCost,
+            MarginPercentage = req.MarginPercentage,
+            Price = price,
+            ScopeOfWork = req.ScopeOfWork ?? quote.ScopeOfWork,
+            Summary = req.Summary,
+            NotToExceedPrice = req.NotToExceedPrice,
+            UseNtePricing = req.UseNtePricing,
+            ProposedStartDate = req.ProposedStartDate,
+            EstimatedDuration = req.EstimatedDuration,
+            TermsAndConditions = req.TermsAndConditions ?? DefaultTermsAndConditions,
+            InternalNotes = req.InternalNotes,
             Status = ProposalStatus.Draft,
+            Version = 1,
             PublicToken = "pr-" + Guid.NewGuid().ToString("N")
         };
 
         _db.Proposals.Add(proposal);
+
+        // Copy selected attachments or all quote attachments
+        var attachmentIds = req.AttachmentIds != null && req.AttachmentIds.Length > 0
+            ? req.AttachmentIds
+            : quote.Attachments.Select(a => a.Id).ToArray();
+
+        foreach (var attachmentId in attachmentIds)
+        {
+            _db.ProposalAttachments.Add(new ProposalAttachment
+            {
+                ProposalId = proposal.Id,
+                AttachmentId = attachmentId
+            });
+        }
+
         await _db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = proposal.Id }, await BuildProposalDto(proposal.Id));
@@ -83,14 +123,52 @@ public class ProposalsController : ControllerBase
     [Authorize(Roles = "Operator")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProposalRequest req)
     {
-        var proposal = await _db.Proposals.FindAsync(id)
+        var proposal = await _db.Proposals
+            .Include(p => p.Attachments)
+            .FirstOrDefaultAsync(p => p.Id == id)
             ?? throw new NotFoundException("Proposal not found.");
 
-        if (proposal.Status != ProposalStatus.Draft)
-            throw new InvalidOperationException("Only draft proposals can be updated.");
+        // If proposal was already sent, create a version snapshot before updating
+        if (proposal.Status == ProposalStatus.Sent)
+        {
+            CreateVersionSnapshot(proposal, req.ChangeNotes);
+            proposal.Status = ProposalStatus.Draft;
+        }
+        else if (proposal.Status != ProposalStatus.Draft)
+        {
+            throw new InvalidOperationException("Only draft or sent proposals can be updated.");
+        }
 
-        proposal.Price = req.Price;
-        proposal.ScopeOfWork = req.ScopeOfWork;
+        if (req.MarginPercentage.HasValue)
+        {
+            proposal.MarginPercentage = req.MarginPercentage.Value;
+            proposal.Price = proposal.VendorCost * (1 + req.MarginPercentage.Value / 100m);
+        }
+
+        if (req.ScopeOfWork != null) proposal.ScopeOfWork = req.ScopeOfWork;
+        if (req.Summary != null) proposal.Summary = req.Summary;
+        if (req.NotToExceedPrice.HasValue) proposal.NotToExceedPrice = req.NotToExceedPrice;
+        if (req.UseNtePricing.HasValue) proposal.UseNtePricing = req.UseNtePricing.Value;
+        if (req.ProposedStartDate.HasValue) proposal.ProposedStartDate = req.ProposedStartDate;
+        if (req.EstimatedDuration != null) proposal.EstimatedDuration = req.EstimatedDuration;
+        if (req.TermsAndConditions != null) proposal.TermsAndConditions = req.TermsAndConditions;
+        if (req.InternalNotes != null) proposal.InternalNotes = req.InternalNotes;
+
+        if (req.AttachmentIds != null)
+        {
+            // Replace attachments
+            _db.ProposalAttachments.RemoveRange(proposal.Attachments);
+            foreach (var attachmentId in req.AttachmentIds)
+            {
+                _db.ProposalAttachments.Add(new ProposalAttachment
+                {
+                    ProposalId = proposal.Id,
+                    AttachmentId = attachmentId
+                });
+            }
+        }
+
+        proposal.Version++;
         await _db.SaveChangesAsync();
 
         return Ok(await BuildProposalDto(id));
@@ -108,6 +186,9 @@ public class ProposalsController : ControllerBase
         if (proposal.Status != ProposalStatus.Draft)
             throw new InvalidOperationException("Only draft proposals can be sent.");
 
+        // Create version snapshot on send
+        CreateVersionSnapshot(proposal, "Sent to client");
+
         proposal.Status = ProposalStatus.Sent;
         proposal.SentAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -120,6 +201,20 @@ public class ProposalsController : ControllerBase
             $"/proposals/view/{proposal.PublicToken}");
 
         return Ok(await BuildProposalDto(id));
+    }
+
+    [HttpPost("api/proposals/{id:guid}/generate-summary")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> GenerateSummary(Guid id, [FromBody] GenerateSummaryRequest req)
+    {
+        // Verify proposal exists
+        var exists = await _db.Proposals.AnyAsync(p => p.Id == id);
+        if (!exists) throw new NotFoundException("Proposal not found.");
+
+        var summary = await _aiSummaryService.GenerateProposalSummaryAsync(
+            req.ScopeOfWork, req.Notes, req.JobDescription, req.AdditionalContext);
+
+        return Ok(new GenerateSummaryResponse(summary));
     }
 
     [HttpPost("api/proposals/{id:guid}/respond")]
@@ -200,10 +295,71 @@ public class ProposalsController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> ViewByToken(string token)
     {
-        var proposal = await _db.Proposals.FirstOrDefaultAsync(p => p.PublicToken == token)
+        var proposal = await _db.Proposals
+            .Include(p => p.ServiceRequest)
+            .Include(p => p.Attachments).ThenInclude(pa => pa.Attachment)
+            .FirstOrDefaultAsync(p => p.PublicToken == token)
             ?? throw new NotFoundException("Proposal not found.");
 
-        return Ok(await BuildProposalDto(proposal.Id));
+        var attachments = proposal.Attachments.Select(pa =>
+            new AttachmentDto(pa.Attachment.Id, pa.Attachment.Url, pa.Attachment.Filename, pa.Attachment.MimeType))
+            .ToList();
+
+        var clientDto = new ClientProposalDto(
+            proposal.Id,
+            proposal.Price,
+            proposal.ScopeOfWork,
+            proposal.Summary,
+            proposal.NotToExceedPrice,
+            proposal.UseNtePricing,
+            proposal.ProposedStartDate,
+            proposal.EstimatedDuration,
+            proposal.TermsAndConditions,
+            proposal.Status.ToString(),
+            attachments,
+            new ClientProposalServiceRequestDto(
+                proposal.ServiceRequest.Title,
+                proposal.ServiceRequest.Location,
+                proposal.ServiceRequest.Category));
+
+        return Ok(clientDto);
+    }
+
+    [HttpGet("api/proposals/{id:guid}/versions")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> GetVersions(Guid id)
+    {
+        var exists = await _db.Proposals.AnyAsync(p => p.Id == id);
+        if (!exists) throw new NotFoundException("Proposal not found.");
+
+        var versions = await _db.ProposalVersions
+            .Where(v => v.ProposalId == id)
+            .OrderByDescending(v => v.VersionNumber)
+            .Select(v => new ProposalVersionDto(
+                v.Id, v.ProposalId, v.VersionNumber, v.Price,
+                v.VendorCost, v.MarginPercentage, v.ScopeOfWork,
+                v.Summary, v.NotToExceedPrice, v.CreatedAt, v.ChangeNotes))
+            .ToListAsync();
+
+        return Ok(versions);
+    }
+
+    private void CreateVersionSnapshot(Proposal proposal, string? changeNotes)
+    {
+        var version = new ProposalVersion
+        {
+            ProposalId = proposal.Id,
+            VersionNumber = proposal.Version,
+            Price = proposal.Price,
+            VendorCost = proposal.VendorCost,
+            MarginPercentage = proposal.MarginPercentage,
+            ScopeOfWork = proposal.ScopeOfWork,
+            Summary = proposal.Summary,
+            NotToExceedPrice = proposal.NotToExceedPrice,
+            CreatedAt = DateTime.UtcNow,
+            ChangeNotes = changeNotes
+        };
+        _db.ProposalVersions.Add(version);
     }
 
     private async Task<ProposalDto> BuildProposalDto(Guid proposalId)
@@ -216,6 +372,8 @@ public class ProposalsController : ControllerBase
             .Include(p => p.ServiceRequest)
                 .ThenInclude(sr => sr.WorkOrder)
             .Include(p => p.Quote)
+            .Include(p => p.Attachments).ThenInclude(pa => pa.Attachment)
+            .Include(p => p.Versions)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
             ?? throw new NotFoundException("Proposal not found.");
 
@@ -241,19 +399,44 @@ public class ProposalsController : ControllerBase
             proposal.Quote.SubmittedAt
         );
 
+        var attachments = proposal.Attachments.Select(pa =>
+            new AttachmentDto(pa.Attachment.Id, pa.Attachment.Url, pa.Attachment.Filename, pa.Attachment.MimeType))
+            .ToList();
+
+        var versions = proposal.Versions
+            .OrderByDescending(v => v.VersionNumber)
+            .Select(v => new ProposalVersionDto(
+                v.Id, v.ProposalId, v.VersionNumber, v.Price,
+                v.VendorCost, v.MarginPercentage, v.ScopeOfWork,
+                v.Summary, v.NotToExceedPrice, v.CreatedAt, v.ChangeNotes))
+            .ToList();
+
         return new ProposalDto(
             proposal.Id,
             proposal.ServiceRequestId,
             proposal.QuoteId,
             proposal.Price,
+            proposal.VendorCost,
+            proposal.MarginPercentage,
             proposal.ScopeOfWork,
+            proposal.Summary,
+            proposal.SummaryGeneratedByAi,
+            proposal.NotToExceedPrice,
+            proposal.UseNtePricing,
+            proposal.ProposedStartDate,
+            proposal.EstimatedDuration,
+            proposal.TermsAndConditions,
+            proposal.InternalNotes,
             proposal.Status.ToString(),
             proposal.PublicToken,
+            proposal.Version,
             proposal.SentAt,
             proposal.ClientResponse,
             proposal.ClientRespondedAt,
             srSummary,
-            quoteSummary
+            quoteSummary,
+            attachments,
+            versions
         );
     }
 }

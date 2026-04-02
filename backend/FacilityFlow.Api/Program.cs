@@ -65,6 +65,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddHttpClient<IAiSummaryService, AiSummaryService>();
 
 // ---- FluentValidation ----
 builder.Services.AddFluentValidationAutoValidation();

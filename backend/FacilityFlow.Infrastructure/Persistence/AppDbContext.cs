@@ -19,6 +19,8 @@ public class AppDbContext : DbContext
     public DbSet<Quote> Quotes => Set<Quote>();
     public DbSet<QuoteLineItem> QuoteLineItems => Set<QuoteLineItem>();
     public DbSet<Proposal> Proposals => Set<Proposal>();
+    public DbSet<ProposalAttachment> ProposalAttachments => Set<ProposalAttachment>();
+    public DbSet<ProposalVersion> ProposalVersions => Set<ProposalVersion>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Notification> Notifications => Set<Notification>();
@@ -93,6 +95,26 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<QuoteLineItem>()
             .HasOne(li => li.Quote).WithMany(q => q.LineItems).HasForeignKey(li => li.QuoteId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Proposal>().Property(p => p.Price).HasPrecision(18, 2);
+        modelBuilder.Entity<Proposal>().Property(p => p.VendorCost).HasPrecision(18, 2);
+        modelBuilder.Entity<Proposal>().Property(p => p.MarginPercentage).HasPrecision(5, 2);
+        modelBuilder.Entity<Proposal>().Property(p => p.NotToExceedPrice).HasPrecision(18, 2);
+
+        // ProposalAttachment relationships
+        modelBuilder.Entity<ProposalAttachment>()
+            .HasOne(pa => pa.Proposal).WithMany(p => p.Attachments).HasForeignKey(pa => pa.ProposalId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProposalAttachment>()
+            .HasOne(pa => pa.Attachment).WithMany().HasForeignKey(pa => pa.AttachmentId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProposalAttachment>()
+            .HasIndex(pa => new { pa.ProposalId, pa.AttachmentId }).IsUnique();
+
+        // ProposalVersion relationships
+        modelBuilder.Entity<ProposalVersion>()
+            .HasOne(pv => pv.Proposal).WithMany(p => p.Versions).HasForeignKey(pv => pv.ProposalId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProposalVersion>().Property(pv => pv.Price).HasPrecision(18, 2);
+        modelBuilder.Entity<ProposalVersion>().Property(pv => pv.VendorCost).HasPrecision(18, 2);
+        modelBuilder.Entity<ProposalVersion>().Property(pv => pv.MarginPercentage).HasPrecision(5, 2);
+        modelBuilder.Entity<ProposalVersion>().Property(pv => pv.NotToExceedPrice).HasPrecision(18, 2);
+
         modelBuilder.Entity<Vendor>().Property(v => v.Rating).HasPrecision(3, 2);
         modelBuilder.Entity<VendorPayment>().Property(vp => vp.Amount).HasPrecision(18, 2);
     }

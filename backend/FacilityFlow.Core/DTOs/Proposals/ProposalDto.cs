@@ -1,3 +1,4 @@
+using FacilityFlow.Core.DTOs.Common;
 using FacilityFlow.Core.DTOs.ServiceRequests;
 using FacilityFlow.Core.DTOs.VendorInvites;
 
@@ -8,11 +9,24 @@ public record ProposalDto(
     Guid ServiceRequestId,
     Guid QuoteId,
     decimal Price,
+    decimal VendorCost,
+    decimal MarginPercentage,
     string ScopeOfWork,
+    string? Summary,
+    bool SummaryGeneratedByAi,
+    decimal? NotToExceedPrice,
+    bool UseNtePricing,
+    DateTime? ProposedStartDate,
+    string? EstimatedDuration,
+    string? TermsAndConditions,
+    string? InternalNotes,
     string Status,
     string? PublicToken,
+    int Version,
     DateTime? SentAt,
     string? ClientResponse,
     DateTime? ClientRespondedAt,
     ServiceRequestSummaryDto ServiceRequest,
-    QuoteSummaryDto Quote);
+    QuoteSummaryDto Quote,
+    List<AttachmentDto> Attachments,
+    List<ProposalVersionDto> Versions);
