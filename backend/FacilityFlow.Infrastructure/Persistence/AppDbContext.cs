@@ -11,6 +11,8 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
+    public DbSet<VendorNote> VendorNotes => Set<VendorNote>();
+    public DbSet<VendorPayment> VendorPayments => Set<VendorPayment>();
     public DbSet<ServiceRequest> ServiceRequests => Set<ServiceRequest>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<VendorInvite> VendorInvites => Set<VendorInvite>();
@@ -32,6 +34,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Quote>().Property(q => q.Status).HasConversion<string>();
         modelBuilder.Entity<Proposal>().Property(p => p.Status).HasConversion<string>();
         modelBuilder.Entity<WorkOrder>().Property(w => w.Status).HasConversion<string>();
+        modelBuilder.Entity<VendorPayment>().Property(vp => vp.Status).HasConversion<string>();
 
         // JSON columns for Vendor arrays
         modelBuilder.Entity<Vendor>().Property(v => v.Trades).HasColumnType("jsonb");
@@ -49,6 +52,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ServiceRequest>().HasIndex(sr => sr.Status);
         modelBuilder.Entity<ServiceRequest>().HasIndex(sr => sr.ClientId);
         modelBuilder.Entity<Notification>().HasIndex(n => new { n.UserId, n.Read });
+        modelBuilder.Entity<VendorNote>().HasIndex(vn => vn.VendorId);
+        modelBuilder.Entity<VendorNote>().HasIndex(vn => vn.CreatedAt);
+        modelBuilder.Entity<VendorPayment>().HasIndex(vp => vp.VendorId);
 
         // Relationships
         modelBuilder.Entity<ServiceRequest>()
@@ -62,9 +68,24 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Notification>()
             .HasOne(n => n.User).WithMany(u => u.Notifications).HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<VendorNote>()
+            .HasOne(vn => vn.Vendor).WithMany(v => v.Notes).HasForeignKey(vn => vn.VendorId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<VendorNote>()
+            .HasOne(vn => vn.CreatedBy).WithMany().HasForeignKey(vn => vn.CreatedById).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<VendorPayment>()
+            .HasOne(vp => vp.Vendor).WithMany(v => v.Payments).HasForeignKey(vp => vp.VendorId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<VendorPayment>()
+            .HasOne(vp => vp.WorkOrder).WithMany().HasForeignKey(vp => vp.WorkOrderId).OnDelete(DeleteBehavior.SetNull);
+
+        // Vendor.UserId is now optional (email-first vendors don't need user accounts)
+        modelBuilder.Entity<Vendor>()
+            .HasOne(v => v.User).WithOne(u => u.Vendor).HasForeignKey<Vendor>(v => v.UserId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+
         // Decimal precision
         modelBuilder.Entity<Quote>().Property(q => q.Price).HasPrecision(18, 2);
         modelBuilder.Entity<Proposal>().Property(p => p.Price).HasPrecision(18, 2);
         modelBuilder.Entity<Vendor>().Property(v => v.Rating).HasPrecision(3, 2);
+        modelBuilder.Entity<VendorPayment>().Property(vp => vp.Amount).HasPrecision(18, 2);
     }
 }

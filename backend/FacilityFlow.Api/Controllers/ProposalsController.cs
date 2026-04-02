@@ -173,11 +173,11 @@ public class ProposalsController : ControllerBase
             };
             _db.WorkOrders.Add(workOrder);
 
-            // Notify vendor
+            // Notify vendor (only if vendor has a linked user account)
             var vendor = await _db.Vendors.FindAsync(proposal.Quote.VendorId);
-            if (vendor != null)
+            if (vendor != null && vendor.UserId.HasValue)
             {
-                await _notifications.CreateAsync(vendor.UserId, "WorkOrder.Assigned",
+                await _notifications.CreateAsync(vendor.UserId.Value, "WorkOrder.Assigned",
                     $"You have been assigned a new work order for: {proposal.ServiceRequest.Title}",
                     $"/work-orders/{workOrder.Id}");
             }

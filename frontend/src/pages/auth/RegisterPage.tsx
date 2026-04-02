@@ -46,8 +46,15 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">FacilityFlow</h1>
-          <p className="mt-2 text-sm text-gray-600">Create your account</p>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 28" className="w-12 h-7 flex-shrink-0">
+              <rect width="48" height="28" rx="14" fill="#E8511A"/>
+              <circle cx="34" cy="14" r="10" fill="white"/>
+            </svg>
+            <span className="text-4xl font-bold" style={{ color: '#E8511A' }}>On-Call</span>
+          </div>
+          <p className="text-xs font-semibold tracking-widest uppercase text-gray-500">Facilities &amp; Maintenance</p>
+          <p className="mt-3 text-sm text-gray-600">Create your account</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">

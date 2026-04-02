@@ -226,10 +226,11 @@ public class ServiceRequestsController : ControllerBase
             _db.Quotes.Add(quote);
             created.Add(invite);
 
-            // Notify vendor
-            await _notifications.CreateAsync(vendor.UserId, "VendorInvite.Received",
-                $"You have been invited to quote on service request: {sr.Title}",
-                $"/quotes/submit/{quote.PublicToken}");
+            // Notify vendor (only if vendor has a linked user account)
+            if (vendor.UserId.HasValue)
+                await _notifications.CreateAsync(vendor.UserId.Value, "VendorInvite.Received",
+                    $"You have been invited to quote on service request: {sr.Title}",
+                    $"/quotes/submit/{quote.PublicToken}");
         }
 
         // Auto-transition to Sourcing if status is New

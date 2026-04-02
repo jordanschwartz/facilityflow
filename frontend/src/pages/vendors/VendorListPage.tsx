@@ -14,15 +14,19 @@ export default function VendorListPage() {
   const [search, setSearch] = useState('');
   const [trade, setTrade] = useState('');
   const [zip, setZip] = useState('');
+  const [activeOnly, setActiveOnly] = useState(true);
+  const [hideDnu, setHideDnu] = useState(true);
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['vendors', { search, trade, zip, page }],
+    queryKey: ['vendors', { search, trade, zip, activeOnly, hideDnu, page }],
     queryFn: () => vendorsApi.list({
       search: search || undefined,
       trade: trade || undefined,
       zip: zip || undefined,
+      activeOnly,
+      hideDnu,
       page,
       pageSize,
     }).then(r => r.data),
@@ -50,12 +54,12 @@ export default function VendorListPage() {
     <div>
       <PageHeader
         title="Vendors"
-        subtitle={`${totalCount} registered vendors`}
+        subtitle={`${totalCount} vendors`}
         actions={<Button onClick={() => navigate('/vendors/new')}>+ New Vendor</Button>}
       />
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1 max-w-xs">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -80,6 +84,24 @@ export default function VendorListPage() {
           onChange={e => { setZip(e.target.value); setPage(1); }}
           className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500 w-32"
         />
+        <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+          <input
+            type="checkbox"
+            checked={activeOnly}
+            onChange={e => { setActiveOnly(e.target.checked); setPage(1); }}
+            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+          />
+          Active only
+        </label>
+        <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+          <input
+            type="checkbox"
+            checked={hideDnu}
+            onChange={e => { setHideDnu(e.target.checked); setPage(1); }}
+            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+          />
+          Hide DNU
+        </label>
       </div>
 
       {/* Table */}
@@ -99,38 +121,48 @@ export default function VendorListPage() {
             <thead>
               <tr className="bg-gray-50">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trades</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zip Codes</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service Area</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {items.map(vendor => (
-                <tr key={vendor.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={vendor.id} className={`hover:bg-gray-50 transition-colors ${!vendor.isActive ? 'opacity-70' : ''}`}>
                   <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-gray-900">{vendor.companyName}</p>
-                    <p className="text-xs text-gray-500">{vendor.user?.email}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {vendor.trades.map(t => (
-                        <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">{t}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {vendor.zipCodes.slice(0, 4).map(z => (
-                        <span key={z} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{z}</span>
-                      ))}
-                      {vendor.zipCodes.length > 4 && (
-                        <span className="text-xs text-gray-500">+{vendor.zipCodes.length - 4} more</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-gray-900">{vendor.companyName}</p>
+                      {vendor.isDnu && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                          DNU
+                        </span>
+                      )}
+                      {!vendor.isActive && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                          Inactive
+                        </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{vendor.phone}</td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-gray-900">{vendor.primaryContactName}</p>
+                    <p className="text-xs text-gray-500">{vendor.email}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {vendor.trades.slice(0, 3).map(t => (
+                        <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">{t}</span>
+                      ))}
+                      {vendor.trades.length > 3 && (
+                        <span className="text-xs text-gray-500">+{vendor.trades.length - 3}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {vendor.primaryZip} — {vendor.serviceRadiusMiles} mi
+                  </td>
                   <td className="px-6 py-4">{renderStars(vendor.rating)}</td>
                   <td className="px-6 py-4 text-right">
                     <Link to={`/vendors/${vendor.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">

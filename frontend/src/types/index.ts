@@ -22,7 +22,7 @@ export interface PagedResult<T> {
 }
 
 export interface ClientSummary { id: string; companyName: string; phone?: string; }
-export interface VendorSummary { id: string; companyName: string; trades: string[]; rating?: number; }
+export interface VendorSummary { id: string; companyName: string; trades: string[]; rating?: number; isDnu?: boolean; isActive?: boolean; }
 export interface AttachmentDto { id: string; url: string; filename: string; mimeType: string; }
 export interface QuoteSummary { id: string; status: QuoteStatus; price?: number; submittedAt?: string; }
 
@@ -38,8 +38,55 @@ export interface ServiceRequest extends ServiceRequestSummary {
 }
 
 export interface Vendor {
-  id: string; userId: string; companyName: string; phone: string;
-  trades: string[]; zipCodes: string[]; rating?: number; user: AuthUser;
+  id: string;
+  userId?: string;
+  companyName: string;
+  primaryContactName: string;
+  email: string;
+  phone?: string;
+  primaryZip: string;
+  serviceRadiusMiles: number;
+  trades: string[];
+  rating?: number;
+  isActive: boolean;
+  isDnu: boolean;
+  dnuReason?: string;
+  user?: AuthUser;
+}
+
+export interface VendorNote {
+  id: string;
+  vendorId: string;
+  text: string;
+  attachmentUrl?: string;
+  attachmentFilename?: string;
+  createdByName: string;
+  createdAt: string;
+}
+
+export interface VendorPayment {
+  id: string;
+  vendorId: string;
+  workOrderId?: string;
+  amount: number;
+  status: 'Pending' | 'Paid';
+  paidAt?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface VendorSourcingResult {
+  vendorId: string;
+  companyName: string;
+  primaryContactName: string;
+  email: string;
+  primaryZip: string;
+  serviceRadiusMiles: number;
+  trades: string[];
+  isDnu: boolean;
+  dnuReason?: string;
+  completedJobCount: number;
+  lastUsedDate?: string;
 }
 
 export interface Client {

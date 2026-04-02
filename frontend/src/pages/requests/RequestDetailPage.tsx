@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import { serviceRequestsApi } from '../../api/serviceRequests';
 import { vendorsApi } from '../../api/vendors';
 import { quotesApi } from '../../api/quotes';
+import FindVendorsModal from '../../components/vendors/FindVendorsModal';
+import type { VendorSourcingResult } from '../../types';
 import { proposalsApi } from '../../api/proposals';
 import { commentsApi } from '../../api/comments';
 import type { ServiceRequestStatus } from '../../types';
@@ -46,6 +48,7 @@ export default function RequestDetailPage() {
   const setTab = (tab: Tab) => setSearchParams({ tab });
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [findVendorsOpen, setFindVendorsOpen] = useState(false);
   const [vendorSearch, setVendorSearch] = useState('');
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
 
@@ -312,7 +315,10 @@ export default function RequestDetailPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900">Vendor Invites</h2>
             {isOperator && (
-              <Button onClick={() => setInviteModalOpen(true)}>Invite Vendors</Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => setFindVendorsOpen(true)}>Find Vendors</Button>
+                <Button onClick={() => setInviteModalOpen(true)}>Invite Vendors</Button>
+              </div>
             )}
           </div>
 
@@ -352,6 +358,18 @@ export default function RequestDetailPage() {
               </table>
             </div>
           )}
+
+          {/* Find Vendors Modal */}
+          <FindVendorsModal
+            isOpen={findVendorsOpen}
+            onClose={() => setFindVendorsOpen(false)}
+            serviceRequestZip={sr.location ?? ''}
+            requiredTrade={sr.category ?? ''}
+            onSelectVendor={(vendor: VendorSourcingResult) => {
+              setFindVendorsOpen(false);
+              toast.success(`${vendor.companyName} selected — invite them via the Invites section below`);
+            }}
+          />
 
           {/* Invite Modal */}
           <Modal open={inviteModalOpen} onClose={() => setInviteModalOpen(false)} title="Invite Vendors" size="lg">

@@ -16,9 +16,15 @@ export default function Sidebar() {
 
   return (
     <div className="flex flex-col w-64 bg-gray-900 min-h-screen">
-      <div className="px-6 py-5 border-b border-gray-700">
-        <span className="text-white font-bold text-xl">FacilityFlow</span>
-        <p className="text-gray-400 text-xs mt-0.5">Operations Platform</p>
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-700">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 28" className="w-10 h-6 flex-shrink-0">
+          <rect width="48" height="28" rx="14" fill="#E8511A"/>
+          <circle cx="34" cy="14" r="10" fill="white"/>
+        </svg>
+        <div>
+          <div className="text-white font-bold text-lg leading-none">On-Call</div>
+          <div className="text-gray-400 text-[9px] font-semibold tracking-widest uppercase mt-0.5">Facilities & Maintenance</div>
+        </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map(({ to, label, icon: Icon }) => (
