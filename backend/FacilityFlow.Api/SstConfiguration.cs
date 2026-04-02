@@ -58,6 +58,14 @@ public static class SstConfiguration
             overrides["Gemini:ApiKey"] = secret.GetProperty("value").GetString();
         }
 
+        // OpenAI API Key
+        var openAiJson = Environment.GetEnvironmentVariable("SST_RESOURCE_OpenAiApiKey");
+        if (!string.IsNullOrEmpty(openAiJson))
+        {
+            var secret = JsonSerializer.Deserialize<JsonElement>(openAiJson);
+            overrides["OpenAI:ApiKey"] = secret.GetProperty("value").GetString();
+        }
+
         if (overrides.Count > 0)
         {
             builder.Configuration.AddInMemoryCollection(overrides);

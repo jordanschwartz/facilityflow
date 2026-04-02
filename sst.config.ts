@@ -20,6 +20,7 @@ export default $config({
     const stripeSecretKey = new sst.Secret("StripeSecretKey");
     const stripeWebhookSecret = new sst.Secret("StripeWebhookSecret");
     const geminiApiKey = new sst.Secret("GeminiApiKey");
+    const openAiApiKey = new sst.Secret("OpenAiApiKey");
 
     // ---- ACM Certificates (manual DNS validation via Namecheap) ----
 
@@ -88,7 +89,7 @@ export default $config({
     const cluster = new sst.aws.Cluster("Cluster", { vpc });
 
     const api = cluster.addService("Api", {
-      link: [database, jwtSecret, stripeSecretKey, stripeWebhookSecret, geminiApiKey],
+      link: [database, jwtSecret, stripeSecretKey, stripeWebhookSecret, geminiApiKey, openAiApiKey],
       public: {
         domain: {
           name: "api.oncallfm.com",
