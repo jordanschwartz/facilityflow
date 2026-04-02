@@ -12,4 +12,14 @@ public record QuoteDto(
     string? PublicToken,
     DateTime? SubmittedAt,
     VendorSummaryDto Vendor,
-    List<AttachmentDto> Attachments);
+    List<AttachmentDto> Attachments,
+    DateTime? ProposedStartDate,
+    int? EstimatedDurationValue,
+    string? EstimatedDurationUnit,
+    decimal? NotToExceedPrice,
+    string? Assumptions,
+    string? Exclusions,
+    string? VendorAvailability,
+    DateTime? ValidUntil,
+    List<QuoteLineItemDto> LineItems
+);

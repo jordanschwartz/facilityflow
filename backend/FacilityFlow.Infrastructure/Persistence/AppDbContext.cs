@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<VendorInvite> VendorInvites => Set<VendorInvite>();
     public DbSet<Quote> Quotes => Set<Quote>();
+    public DbSet<QuoteLineItem> QuoteLineItems => Set<QuoteLineItem>();
     public DbSet<Proposal> Proposals => Set<Proposal>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<Comment> Comments => Set<Comment>();
@@ -84,6 +85,13 @@ public class AppDbContext : DbContext
 
         // Decimal precision
         modelBuilder.Entity<Quote>().Property(q => q.Price).HasPrecision(18, 2);
+        modelBuilder.Entity<Quote>().Property(q => q.NotToExceedPrice).HasPrecision(18, 2);
+        modelBuilder.Entity<QuoteLineItem>().Property(li => li.Quantity).HasPrecision(18, 4);
+        modelBuilder.Entity<QuoteLineItem>().Property(li => li.UnitPrice).HasPrecision(18, 2);
+
+        // QuoteLineItem relationships
+        modelBuilder.Entity<QuoteLineItem>()
+            .HasOne(li => li.Quote).WithMany(q => q.LineItems).HasForeignKey(li => li.QuoteId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Proposal>().Property(p => p.Price).HasPrecision(18, 2);
         modelBuilder.Entity<Vendor>().Property(v => v.Rating).HasPrecision(3, 2);
         modelBuilder.Entity<VendorPayment>().Property(vp => vp.Amount).HasPrecision(18, 2);

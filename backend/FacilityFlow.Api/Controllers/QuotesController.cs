@@ -33,6 +33,7 @@ public class QuotesController : ControllerBase
         var quotes = await _db.Quotes
             .Include(q => q.Vendor).ThenInclude(v => v.User)
             .Include(q => q.Attachments)
+            .Include(q => q.LineItems)
             .Where(q => q.ServiceRequestId == serviceRequestId)
             .ToListAsync();
 
@@ -46,7 +47,16 @@ public class QuotesController : ControllerBase
             q.PublicToken,
             q.SubmittedAt,
             new VendorSummaryDto(q.Vendor.Id, q.Vendor.CompanyName, q.Vendor.Trades, q.Vendor.Rating),
-            q.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList()
+            q.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList(),
+            q.ProposedStartDate,
+            q.EstimatedDurationValue,
+            q.EstimatedDurationUnit,
+            q.NotToExceedPrice,
+            q.Assumptions,
+            q.Exclusions,
+            q.VendorAvailability,
+            q.ValidUntil,
+            q.LineItems.Select(li => new QuoteLineItemDto(li.Id, li.Description, li.Quantity, li.UnitPrice, li.Quantity * li.UnitPrice)).ToList()
         )).ToList();
 
         return Ok(dtos);
@@ -84,6 +94,7 @@ public class QuotesController : ControllerBase
         var quote = await _db.Quotes
             .Include(q => q.Vendor).ThenInclude(v => v.User)
             .Include(q => q.Attachments)
+            .Include(q => q.LineItems)
             .FirstOrDefaultAsync(q => q.Id == id)
             ?? throw new NotFoundException("Quote not found.");
 
@@ -118,7 +129,16 @@ public class QuotesController : ControllerBase
             quote.PublicToken,
             quote.SubmittedAt,
             new VendorSummaryDto(quote.Vendor.Id, quote.Vendor.CompanyName, quote.Vendor.Trades, quote.Vendor.Rating),
-            quote.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList()
+            quote.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList(),
+            quote.ProposedStartDate,
+            quote.EstimatedDurationValue,
+            quote.EstimatedDurationUnit,
+            quote.NotToExceedPrice,
+            quote.Assumptions,
+            quote.Exclusions,
+            quote.VendorAvailability,
+            quote.ValidUntil,
+            quote.LineItems.Select(li => new QuoteLineItemDto(li.Id, li.Description, li.Quantity, li.UnitPrice, li.Quantity * li.UnitPrice)).ToList()
         );
 
         return Ok(dto);
@@ -132,6 +152,7 @@ public class QuotesController : ControllerBase
             .Include(q => q.ServiceRequest)
             .Include(q => q.Vendor).ThenInclude(v => v.User)
             .Include(q => q.Attachments)
+            .Include(q => q.LineItems)
             .FirstOrDefaultAsync(q => q.PublicToken == token)
             ?? throw new NotFoundException("Quote not found.");
 
@@ -154,7 +175,16 @@ public class QuotesController : ControllerBase
                 quote.PublicToken,
                 quote.SubmittedAt,
                 new VendorSummaryDto(quote.Vendor.Id, quote.Vendor.CompanyName, quote.Vendor.Trades, quote.Vendor.Rating),
-                quote.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList()
+                quote.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList(),
+                quote.ProposedStartDate,
+                quote.EstimatedDurationValue,
+                quote.EstimatedDurationUnit,
+                quote.NotToExceedPrice,
+                quote.Assumptions,
+                quote.Exclusions,
+                quote.VendorAvailability,
+                quote.ValidUntil,
+                quote.LineItems.Select(li => new QuoteLineItemDto(li.Id, li.Description, li.Quantity, li.UnitPrice, li.Quantity * li.UnitPrice)).ToList()
             )
         });
     }
@@ -167,6 +197,7 @@ public class QuotesController : ControllerBase
             .Include(q => q.Vendor).ThenInclude(v => v.User)
             .Include(q => q.ServiceRequest)
             .Include(q => q.Attachments)
+            .Include(q => q.LineItems)
             .FirstOrDefaultAsync(q => q.PublicToken == token)
             ?? throw new NotFoundException("Quote not found.");
 
@@ -175,8 +206,33 @@ public class QuotesController : ControllerBase
 
         quote.Price = req.Price;
         quote.ScopeOfWork = req.ScopeOfWork;
+        quote.ProposedStartDate = req.ProposedStartDate;
+        quote.EstimatedDurationValue = req.EstimatedDurationValue;
+        quote.EstimatedDurationUnit = req.EstimatedDurationUnit;
+        quote.NotToExceedPrice = req.NotToExceedPrice;
+        quote.Assumptions = req.Assumptions;
+        quote.Exclusions = req.Exclusions;
+        quote.VendorAvailability = req.VendorAvailability;
+        quote.ValidUntil = req.ValidUntil;
         quote.Status = QuoteStatus.Submitted;
         quote.SubmittedAt = DateTime.UtcNow;
+
+        // Replace line items
+        quote.LineItems.Clear();
+        if (req.LineItems != null)
+        {
+            foreach (var li in req.LineItems)
+            {
+                quote.LineItems.Add(new Core.Entities.QuoteLineItem
+                {
+                    Id = Guid.NewGuid(),
+                    QuoteId = quote.Id,
+                    Description = li.Description,
+                    Quantity = li.Quantity,
+                    UnitPrice = li.UnitPrice
+                });
+            }
+        }
 
         // Update invite status
         var invite = await _db.VendorInvites
@@ -212,7 +268,16 @@ public class QuotesController : ControllerBase
             quote.PublicToken,
             quote.SubmittedAt,
             new VendorSummaryDto(quote.Vendor.Id, quote.Vendor.CompanyName, quote.Vendor.Trades, quote.Vendor.Rating),
-            quote.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList()
+            quote.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList(),
+            quote.ProposedStartDate,
+            quote.EstimatedDurationValue,
+            quote.EstimatedDurationUnit,
+            quote.NotToExceedPrice,
+            quote.Assumptions,
+            quote.Exclusions,
+            quote.VendorAvailability,
+            quote.ValidUntil,
+            quote.LineItems.Select(li => new QuoteLineItemDto(li.Id, li.Description, li.Quantity, li.UnitPrice, li.Quantity * li.UnitPrice)).ToList()
         );
 
         return Ok(dto);
