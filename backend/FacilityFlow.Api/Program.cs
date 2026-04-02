@@ -1,4 +1,5 @@
 using System.Text;
+using FacilityFlow.Api;
 using FacilityFlow.Api.Middleware;
 using FacilityFlow.Application;
 using FacilityFlow.Infrastructure;
@@ -14,6 +15,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ---- SST Resource Linking (reads SST_RESOURCE_* env vars in deployed environments) ----
+builder.ConfigureFromSst();
+
 // ---- Infrastructure + Application ----
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -27,11 +31,24 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy
-            .WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        if (builder.Environment.IsProduction())
+        {
+            // In production, allow any HTTPS origin (CloudFront domain assigned at deploy)
+            // Tighten this to the specific domain once known
+            policy
+                .SetIsOriginAllowed(origin => new Uri(origin).Scheme == "https")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+        else
+        {
+            policy
+                .WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
     });
 });
 

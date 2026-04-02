@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/wwwroot/uploads/
+**/.vs/
+
+
+# sst
+.sst
