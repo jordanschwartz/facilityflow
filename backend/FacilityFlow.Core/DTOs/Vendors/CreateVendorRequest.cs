@@ -5,11 +5,11 @@ public record CreateVendorRequest(
     string CompanyName,
     string PrimaryContactName,
     string Email,
-    string Phone,
+    string? Phone,
     string PrimaryZip,
     int ServiceRadiusMiles,
     List<string> Trades,
-    List<string> ZipCodes,
+    List<string>? ZipCodes,
     bool IsActive = true,
     bool IsDnu = false,
     string? DnuReason = null);

@@ -4,7 +4,7 @@ public record UpdateVendorRequest(
     string CompanyName,
     string PrimaryContactName,
     string Email,
-    string Phone,
+    string? Phone,
     string PrimaryZip,
     int ServiceRadiusMiles,
     List<string> Trades,
