@@ -1,9 +1,10 @@
 using FacilityFlow.Core.Entities;
+using FacilityFlow.Core.Interfaces.Services;
 using FacilityFlow.Infrastructure.Persistence;
 
 namespace FacilityFlow.Infrastructure.Services;
 
-public class NotificationService
+public class NotificationService : INotificationService
 {
     private readonly AppDbContext _db;
     public NotificationService(AppDbContext db) => _db = db;

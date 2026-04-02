@@ -1,6 +1,6 @@
 using FacilityFlow.Api.Extensions;
 using FacilityFlow.Core.DTOs.Auth;
-using FacilityFlow.Infrastructure.Services;
+using FacilityFlow.Core.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,9 +10,9 @@ namespace FacilityFlow.Api.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly AuthService _authService;
+    private readonly IAuthService _authService;
 
-    public AuthController(AuthService authService) => _authService = authService;
+    public AuthController(IAuthService authService) => _authService = authService;
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)

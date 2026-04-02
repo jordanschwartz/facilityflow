@@ -1,5 +1,5 @@
-using FacilityFlow.Core.DTOs.Common;
-using FacilityFlow.Core.DTOs.Quotes;
+using FacilityFlow.Application.DTOs.Common;
+using FacilityFlow.Application.DTOs.Quotes;
 
 namespace FacilityFlow.Tests.Quotes;
 

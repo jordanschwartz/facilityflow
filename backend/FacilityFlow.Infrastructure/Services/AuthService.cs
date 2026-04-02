@@ -2,13 +2,14 @@ using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
+using FacilityFlow.Core.Interfaces.Services;
 using FacilityFlow.Infrastructure.Persistence;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 
 namespace FacilityFlow.Infrastructure.Services;
 
-public class AuthService
+public class AuthService : IAuthService
 {
     private readonly AppDbContext _db;
     private readonly ITokenService _tokenService;

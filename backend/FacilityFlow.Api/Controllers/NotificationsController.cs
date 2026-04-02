@@ -1,10 +1,9 @@
 using FacilityFlow.Api.Extensions;
-using FacilityFlow.Core.DTOs.Notifications;
-using FacilityFlow.Core.Exceptions;
-using FacilityFlow.Infrastructure.Persistence;
+using FacilityFlow.Application.Commands.Notifications;
+using FacilityFlow.Application.Queries.Notifications;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace FacilityFlow.Api.Controllers;
 
@@ -13,45 +12,23 @@ namespace FacilityFlow.Api.Controllers;
 [Authorize]
 public class NotificationsController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly IMediator _mediator;
 
-    public NotificationsController(AppDbContext db) => _db = db;
+    public NotificationsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var userId = User.GetUserId();
-
-        var notifications = await _db.Notifications
-            .Where(n => n.UserId == userId)
-            .OrderByDescending(n => n.CreatedAt)
-            .ToListAsync();
-
-        var items = notifications.Select(n => new NotificationDto(
-            n.Id,
-            n.Type,
-            n.Message,
-            n.Read,
-            n.Link,
-            n.CreatedAt
-        )).ToList();
-
-        var unreadCount = notifications.Count(n => !n.Read);
-
-        return Ok(new NotificationsResponse(items, unreadCount, notifications.Count));
+        var result = await _mediator.Send(new GetNotificationsQuery(userId));
+        return Ok(result);
     }
 
     [HttpPatch("{id:guid}/read")]
     public async Task<IActionResult> MarkRead(Guid id)
     {
         var userId = User.GetUserId();
-
-        var notification = await _db.Notifications.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId)
-            ?? throw new NotFoundException("Notification not found.");
-
-        notification.Read = true;
-        await _db.SaveChangesAsync();
-
+        await _mediator.Send(new MarkNotificationReadCommand(id, userId));
         return NoContent();
     }
 
@@ -59,16 +36,7 @@ public class NotificationsController : ControllerBase
     public async Task<IActionResult> MarkAllRead()
     {
         var userId = User.GetUserId();
-
-        var unread = await _db.Notifications
-            .Where(n => n.UserId == userId && !n.Read)
-            .ToListAsync();
-
-        foreach (var n in unread)
-            n.Read = true;
-
-        await _db.SaveChangesAsync();
-
+        await _mediator.Send(new MarkAllNotificationsReadCommand(userId));
         return NoContent();
     }
 }

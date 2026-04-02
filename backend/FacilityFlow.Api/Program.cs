@@ -1,26 +1,21 @@
 using System.Text;
 using FacilityFlow.Api.Middleware;
+using FacilityFlow.Application;
+using FacilityFlow.Infrastructure;
 using FacilityFlow.Infrastructure.Persistence;
 using FacilityFlow.Infrastructure.SeedData;
-using FacilityFlow.Infrastructure.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---- Database ----
-var dataSource = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"))
-    .EnableDynamicJson()
-    .Build();
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(dataSource)
-           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.NavigationBaseIncludeIgnored)));
+// ---- Infrastructure + Application ----
+builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddApplicationServices();
 
 // ---- CORS ----
 var allowedOrigins = builder.Configuration.GetSection("App:AllowedOrigins").Get<string[]>()
@@ -61,12 +56,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ---- Services ----
-builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<NotificationService>();
-builder.Services.AddHttpClient<IAiSummaryService, AiSummaryService>();
-
 // ---- FluentValidation ----
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -89,7 +78,6 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Backend API for FacilityFlow facility management platform"
     });
 
-    // JWT Bearer scheme
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",

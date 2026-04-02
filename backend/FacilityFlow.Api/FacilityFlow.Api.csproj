@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FacilityFlow.Application\FacilityFlow.Application.csproj" />
     <ProjectReference Include="..\FacilityFlow.Core\FacilityFlow.Core.csproj" />
     <ProjectReference Include="..\FacilityFlow.Infrastructure\FacilityFlow.Infrastructure.csproj" />
   </ItemGroup>

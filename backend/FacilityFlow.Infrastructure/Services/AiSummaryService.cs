@@ -1,13 +1,9 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using FacilityFlow.Core.Interfaces.Services;
 using Microsoft.Extensions.Configuration;
 
 namespace FacilityFlow.Infrastructure.Services;
-
-public interface IAiSummaryService
-{
-    Task<string> GenerateProposalSummaryAsync(string scopeOfWork, string? notes, string? jobDescription, string? additionalContext);
-}
 
 public class AiSummaryService : IAiSummaryService
 {

@@ -1,4 +1,4 @@
-using FacilityFlow.Core.DTOs.Quotes;
+using FacilityFlow.Application.DTOs.Quotes;
 using FacilityFlow.Core.Entities;
 
 namespace FacilityFlow.Tests.Quotes;

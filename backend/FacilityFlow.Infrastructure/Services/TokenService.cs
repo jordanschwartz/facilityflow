@@ -2,15 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using FacilityFlow.Core.Entities;
+using FacilityFlow.Core.Interfaces.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace FacilityFlow.Infrastructure.Services;
-
-public interface ITokenService
-{
-    string GenerateToken(User user);
-}
 
 public class TokenService : ITokenService
 {
