@@ -166,6 +166,21 @@ using (var scope = app.Services.CreateScope())
     {
         await db.Database.MigrateAsync();
 
+        // One-time database reset (clears test data, keeps schema + admin)
+        var resetEnabled = builder.Configuration.GetValue<bool>("App:ResetDatabase");
+        if (resetEnabled)
+        {
+            await db.Database.ExecuteSqlRawAsync(@"
+                TRUNCATE TABLE ""ActivityLogs"", ""Invoices"", ""Comments"", ""Notifications"",
+                    ""ProposalVersions"", ""ProposalAttachments"", ""Proposals"",
+                    ""QuoteLineItems"", ""Quotes"", ""VendorInvites"",
+                    ""WorkOrders"", ""Attachments"", ""ServiceRequests"",
+                    ""VendorNotes"", ""VendorPayments"", ""Vendors"",
+                    ""Clients"", ""Users""
+                CASCADE
+            ");
+        }
+
         var seedEnabled = builder.Configuration.GetValue<bool>("App:SeedDatabase");
         if (seedEnabled)
         {
