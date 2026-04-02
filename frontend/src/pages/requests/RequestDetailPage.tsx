@@ -12,6 +12,8 @@ import FindVendorsModal from '../../components/vendors/FindVendorsModal';
 import type { VendorSourcingResult, Quote } from '../../types';
 import { proposalsApi } from '../../api/proposals';
 import { commentsApi } from '../../api/comments';
+import ProposalBuilder from '../../components/proposals/ProposalBuilder';
+import ProposalDetail from '../../components/proposals/ProposalDetail';
 import type { ServiceRequestStatus } from '../../types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -262,13 +264,6 @@ type Tab = typeof TABS[number];
 const commentSchema = z.object({ text: z.string().min(1, 'Comment cannot be empty') });
 type CommentForm = z.infer<typeof commentSchema>;
 
-const proposalSchema = z.object({
-  quoteId: z.string().min(1, 'Select a quote'),
-  price: z.string().min(1, 'Price required').refine(v => !isNaN(parseFloat(v)) && parseFloat(v) >= 0, 'Price must be positive'),
-  scopeOfWork: z.string().min(10, 'Scope of work required'),
-});
-type ProposalForm = z.infer<typeof proposalSchema>;
-
 export default function RequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -284,6 +279,8 @@ export default function RequestDetailPage() {
   const [findVendorsOpen, setFindVendorsOpen] = useState(false);
   const [vendorSearch, setVendorSearch] = useState('');
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [proposalEditMode, setProposalEditMode] = useState(false);
+  const [selectedQuoteIdForProposal, setSelectedQuoteIdForProposal] = useState<string | null>(null);
 
   const { data: sr, isLoading } = useQuery({
     queryKey: ['service-requests', id],
@@ -365,29 +362,7 @@ export default function RequestDetailPage() {
     onError: () => toast.error('Failed to add comment'),
   });
 
-  const { register: registerProposal, handleSubmit: handleProposalSubmit, formState: { errors: proposalErrors, isSubmitting: isSubmittingProposal } } = useForm<ProposalForm>({
-    resolver: zodResolver(proposalSchema),
-  });
-
-  const createProposal = useMutation({
-    mutationFn: (data: ProposalForm) => proposalsApi.create(id!, { quoteId: data.quoteId, price: parseFloat(data.price), scopeOfWork: data.scopeOfWork }),
-    onSuccess: () => {
-      toast.success('Proposal created');
-      queryClient.invalidateQueries({ queryKey: ['service-requests', id] });
-      queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'proposal'] });
-    },
-    onError: () => toast.error('Failed to create proposal'),
-  });
-
-  const sendProposal = useMutation({
-    mutationFn: (proposalId: string) => proposalsApi.send(proposalId),
-    onSuccess: () => {
-      toast.success('Proposal sent to client');
-      queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'proposal'] });
-      queryClient.invalidateQueries({ queryKey: ['service-requests', id] });
-    },
-    onError: () => toast.error('Failed to send proposal'),
-  });
+  // Proposal mutations removed — now handled by ProposalBuilder/ProposalDetail components
 
   if (isLoading) {
     return (
@@ -657,103 +632,95 @@ export default function RequestDetailPage() {
       )}
 
       {activeTab === 'proposal' && (
-        <div className="max-w-2xl">
+        <div className="max-w-3xl">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Proposal</h2>
-          {proposal ? (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <StatusBadge status={proposal.status} />
-                {proposal.status === 'Draft' && isOperator && (
-                  <Button size="sm" loading={sendProposal.isPending} onClick={() => sendProposal.mutate(proposal.id)}>
-                    Send to Client
-                  </Button>
-                )}
-              </div>
-              <dl className="space-y-3">
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Price to Client</dt>
-                  <dd className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(proposal.price)}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Scope of Work</dt>
-                  <dd className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{proposal.scopeOfWork}</dd>
-                </div>
-                {proposal.sentAt && (
-                  <div>
-                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Sent</dt>
-                    <dd className="mt-1 text-sm text-gray-700">{formatDate(proposal.sentAt)}</dd>
+          {(() => {
+            const selectedQuote = selectedQuoteIdForProposal
+              ? quotes?.find(q => q.id === selectedQuoteIdForProposal)
+              : proposal?.quoteId
+                ? quotes?.find(q => q.id === proposal.quoteId)
+                : null;
+
+            // Editing / creating mode
+            if (proposalEditMode || (!proposal && selectedQuote)) {
+              if (!selectedQuote) {
+                return (
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <p className="text-sm text-gray-600">No quote selected. Please go back and select a quote first.</p>
+                    <Button variant="secondary" className="mt-3" onClick={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }}>
+                      Back
+                    </Button>
                   </div>
-                )}
-                {proposal.status === 'Sent' && proposal.publicToken && (
-                  <div>
-                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Client Link</dt>
-                    <dd className="mt-1 flex items-center gap-2">
-                      <code className="text-xs bg-gray-100 rounded px-2 py-1 flex-1 truncate">
-                        {`${window.location.origin}/proposals/view/${proposal.publicToken}`}
-                      </code>
-                      <Button size="sm" variant="secondary" onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/proposals/view/${proposal.publicToken}`);
-                        toast.success('Link copied');
-                      }}>Copy</Button>
-                    </dd>
-                  </div>
-                )}
-                {proposal.clientResponse && (
-                  <div>
-                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Client Response</dt>
-                    <dd className="mt-1 text-sm text-gray-700">{proposal.clientResponse}</dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-          ) : isOperator ? (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <p className="text-sm text-gray-600 mb-4">Create a proposal based on the selected quote to send to the client.</p>
-              <form onSubmit={handleProposalSubmit(data => createProposal.mutate(data))} className="space-y-4">
+                );
+              }
+              return (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Base Quote</label>
-                  <select
-                    {...registerProposal('quoteId')}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
+                  <button
+                    onClick={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }}
+                    className="text-sm text-gray-500 hover:text-gray-700 mb-3 flex items-center gap-1"
                   >
-                    <option value="">Select a quote...</option>
-                    {quotes?.filter(q => q.status === 'Selected' || q.status === 'Submitted').map(q => (
-                      <option key={q.id} value={q.id}>
-                        {q.vendor?.companyName} — {formatCurrency(q.price)}
-                      </option>
+                    &larr; Back to proposal
+                  </button>
+                  <ProposalBuilder
+                    serviceRequestId={id!}
+                    quote={selectedQuote}
+                    existingProposal={proposal}
+                    allQuotes={quotes ?? []}
+                    onSuccess={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }}
+                  />
+                </div>
+              );
+            }
+
+            // Existing proposal — detail view
+            if (proposal) {
+              return (
+                <ProposalDetail
+                  proposal={proposal}
+                  serviceRequestId={id!}
+                  onEdit={() => setProposalEditMode(true)}
+                />
+              );
+            }
+
+            // No proposal yet — show quote selector
+            if (isOperator) {
+              const eligibleQuotes = quotes?.filter(q => q.status === 'Selected' || q.status === 'Submitted') ?? [];
+              if (eligibleQuotes.length === 0) {
+                return (
+                  <EmptyState
+                    title="No quotes available"
+                    description="Wait for vendors to submit quotes, then select one to create a proposal."
+                  />
+                );
+              }
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                  <p className="text-sm text-gray-600 mb-4">Select a quote to base your proposal on.</p>
+                  <div className="space-y-3">
+                    {eligibleQuotes.map(q => (
+                      <button
+                        key={q.id}
+                        onClick={() => setSelectedQuoteIdForProposal(q.id)}
+                        className="w-full flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-brand-300 transition-colors text-left"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{q.vendor?.companyName}</p>
+                          <p className="text-xs text-gray-500">{q.scopeOfWork?.substring(0, 80)}...</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-gray-900">{formatCurrency(q.price)}</p>
+                          <StatusBadge status={q.status} />
+                        </div>
+                      </button>
                     ))}
-                  </select>
-                  {proposalErrors.quoteId && <p className="mt-1 text-xs text-red-600">{proposalErrors.quoteId.message}</p>}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Price to Client</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...registerProposal('price')}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
-                    placeholder="0.00"
-                  />
-                  {proposalErrors.price && <p className="mt-1 text-xs text-red-600">{proposalErrors.price.message}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Scope of Work</label>
-                  <textarea
-                    {...registerProposal('scopeOfWork')}
-                    rows={5}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
-                    placeholder="Describe the work to be performed..."
-                  />
-                  {proposalErrors.scopeOfWork && <p className="mt-1 text-xs text-red-600">{proposalErrors.scopeOfWork.message}</p>}
-                </div>
-                <Button type="submit" loading={isSubmittingProposal}>
-                  Create Proposal
-                </Button>
-              </form>
-            </div>
-          ) : (
-            <EmptyState title="No proposal created yet" description="The operator will create a proposal for this request" />
-          )}
+              );
+            }
+
+            return <EmptyState title="No proposal created yet" description="The operator will create a proposal for this request" />;
+          })()}
         </div>
       )}
 

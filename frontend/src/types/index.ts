@@ -2,7 +2,7 @@ export type UserRole = 'Operator' | 'Client' | 'Vendor';
 export type Priority = 'Low' | 'Medium' | 'High' | 'Urgent';
 export type ServiceRequestStatus = 'New' | 'Sourcing' | 'Quoting' | 'PendingApproval' | 'Approved' | 'Rejected' | 'Completed';
 export type QuoteStatus = 'Requested' | 'Submitted' | 'Reviewed' | 'Selected' | 'Rejected';
-export type ProposalStatus = 'Draft' | 'Sent' | 'Approved' | 'Rejected';
+export type ProposalStatus = 'Draft' | 'Sent' | 'Viewed' | 'Approved' | 'Rejected' | 'Revised';
 export type WorkOrderStatus = 'Assigned' | 'InProgress' | 'Completed' | 'Closed';
 export type VendorInviteStatus = 'Invited' | 'Viewed' | 'Quoted' | 'Declined';
 
@@ -131,11 +131,99 @@ export interface ProposalQuoteSummary extends QuoteSummary {
   exclusions?: string;
 }
 
+export interface ProposalAttachment {
+  id: string;
+  proposalId: string;
+  attachmentId: string;
+  attachment: AttachmentDto;
+}
+
+export interface ProposalVersion {
+  id: string;
+  proposalId: string;
+  versionNumber: number;
+  price: number;
+  vendorCost: number;
+  marginPercentage: number;
+  scopeOfWork: string;
+  summary: string | null;
+  notToExceedPrice: number | null;
+  createdAt: string;
+  changeNotes: string | null;
+}
+
 export interface Proposal {
-  id: string; serviceRequestId: string; quoteId: string;
-  price: number; scopeOfWork: string; status: ProposalStatus;
-  publicToken?: string; sentAt?: string; clientResponse?: string; clientRespondedAt?: string;
-  serviceRequest: ServiceRequestSummary; quote: ProposalQuoteSummary;
+  id: string;
+  serviceRequestId: string;
+  quoteId: string;
+  price: number;
+  vendorCost: number;
+  marginPercentage: number;
+  scopeOfWork: string;
+  summary: string | null;
+  summaryGeneratedByAi: boolean;
+  notToExceedPrice: number | null;
+  useNtePricing: boolean;
+  proposedStartDate: string | null;
+  estimatedDuration: string | null;
+  termsAndConditions: string | null;
+  internalNotes: string | null;
+  status: ProposalStatus;
+  publicToken?: string;
+  version: number;
+  sentAt?: string;
+  clientResponse?: string;
+  clientRespondedAt?: string;
+  serviceRequest: ServiceRequestSummary;
+  quote: ProposalQuoteSummary;
+  attachments: ProposalAttachment[];
+  versions: ProposalVersion[];
+}
+
+export interface ClientProposal {
+  id: string;
+  price: number;
+  scopeOfWork: string;
+  summary: string | null;
+  notToExceedPrice: number | null;
+  useNtePricing: boolean;
+  proposedStartDate: string | null;
+  estimatedDuration: string | null;
+  termsAndConditions: string | null;
+  status: ProposalStatus;
+  sentAt?: string;
+  clientResponse?: string;
+  clientRespondedAt?: string;
+  attachments: { id: string; fileName: string; filePath: string }[];
+  serviceRequest: { title: string; location: string; category: string };
+}
+
+export interface CreateProposalRequest {
+  quoteId: string;
+  marginPercentage: number;
+  scopeOfWork: string;
+  summary?: string;
+  notToExceedPrice?: number;
+  useNtePricing?: boolean;
+  proposedStartDate?: string;
+  estimatedDuration?: string;
+  termsAndConditions?: string;
+  internalNotes?: string;
+  attachmentIds?: string[];
+}
+
+export interface UpdateProposalRequest {
+  marginPercentage?: number;
+  scopeOfWork?: string;
+  summary?: string;
+  notToExceedPrice?: number;
+  useNtePricing?: boolean;
+  proposedStartDate?: string;
+  estimatedDuration?: string;
+  termsAndConditions?: string;
+  internalNotes?: string;
+  attachmentIds?: string[];
+  changeNotes?: string;
 }
 
 export interface WorkOrder {
