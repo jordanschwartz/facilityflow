@@ -23,26 +23,31 @@ import { formatDate, formatCurrency, formatRelativeTime } from '../../utils/form
 import { useAuthStore } from '../../stores/authStore';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
+
 function QuoteCard({ quote, isOperator, selectQuote }: {
   quote: Quote;
   isOperator: boolean;
   selectQuote: { mutate: (id: string) => void; isPending: boolean };
 }) {
+  const [scopeOpen, setScopeOpen] = useState(false);
   const [lineItemsOpen, setLineItemsOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const hasLineItems = quote.lineItems && quote.lineItems.length > 0;
   const hasDetails = !!(quote.assumptions || quote.exclusions);
+  const hasAttachments = quote.attachments && quote.attachments.length > 0;
+  const scopeTruncated = quote.scopeOfWork && quote.scopeOfWork.length > 120;
 
   return (
     <div className="border border-gray-200 rounded-xl bg-white shadow-sm p-5">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
             <span className="text-sm font-medium text-gray-900">{quote.vendor?.companyName}</span>
             <StatusBadge status={quote.status} />
           </div>
-          <p className="text-xs text-gray-500 truncate">{quote.scopeOfWork}</p>
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-base font-bold text-gray-900">{formatCurrency(quote.price)}</p>
@@ -51,6 +56,24 @@ function QuoteCard({ quote, isOperator, selectQuote }: {
           )}
         </div>
       </div>
+
+      {/* Scope of Work */}
+      {quote.scopeOfWork && (
+        <div className="mt-2">
+          <p className="text-xs text-gray-700 whitespace-pre-wrap">
+            {scopeOpen || !scopeTruncated ? quote.scopeOfWork : `${quote.scopeOfWork.slice(0, 120)}…`}
+          </p>
+          {scopeTruncated && (
+            <button
+              type="button"
+              onClick={() => setScopeOpen(v => !v)}
+              className="mt-0.5 text-xs text-brand-600 hover:text-brand-700 font-medium"
+            >
+              {scopeOpen ? 'Show less' : 'Show more'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Meta fields */}
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
@@ -71,6 +94,41 @@ function QuoteCard({ quote, isOperator, selectQuote }: {
         )}
       </div>
 
+      {/* Attachments */}
+      {hasAttachments && (
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Attachments ({quote.attachments.length})</p>
+          <div className="flex flex-wrap gap-2">
+            {quote.attachments.map(a => {
+              const url = `${API_BASE}${a.url}`;
+              if (a.mimeType.startsWith('image/')) {
+                return (
+                  <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}>
+                    <img src={url} alt={a.filename} className="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
+                  </a>
+                );
+              }
+              if (a.mimeType.startsWith('video/')) {
+                return (
+                  <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}
+                    className="flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-gray-500">
+                    <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <span className="text-xs truncate w-full text-center px-1">{a.filename}</span>
+                  </a>
+                );
+              }
+              return (
+                <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}
+                  className="flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 bg-red-50 hover:bg-red-100 transition-colors text-red-500">
+                  <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
+                  <span className="text-xs truncate w-full text-center px-1">{a.filename}</span>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Expandable: Line Items */}
       {hasLineItems && (
         <div className="mt-3 border-t border-gray-100 pt-3">
@@ -80,7 +138,7 @@ function QuoteCard({ quote, isOperator, selectQuote }: {
             className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
           >
             {lineItemsOpen ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
-            View Line Items ({quote.lineItems.length})
+            Line Items ({quote.lineItems.length})
           </button>
           {lineItemsOpen && (
             <div className="mt-2 overflow-x-auto">
@@ -109,7 +167,7 @@ function QuoteCard({ quote, isOperator, selectQuote }: {
         </div>
       )}
 
-      {/* Expandable: Details (Assumptions / Exclusions) */}
+      {/* Expandable: Assumptions / Exclusions */}
       {hasDetails && (
         <div className="mt-3 border-t border-gray-100 pt-3">
           <button
@@ -118,7 +176,7 @@ function QuoteCard({ quote, isOperator, selectQuote }: {
             className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
           >
             {detailsOpen ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
-            Details
+            Assumptions & Exclusions
           </button>
           {detailsOpen && (
             <div className="mt-2 space-y-2">
@@ -141,7 +199,7 @@ function QuoteCard({ quote, isOperator, selectQuote }: {
 
       {/* Actions */}
       {isOperator && (
-        <div className="mt-3 flex items-center gap-2 justify-end">
+        <div className="mt-4 flex items-center gap-2 justify-end border-t border-gray-100 pt-3">
           {quote.publicToken && quote.status === 'Requested' && (
             <Button
               size="sm"
@@ -161,7 +219,7 @@ function QuoteCard({ quote, isOperator, selectQuote }: {
               onClick={() => selectQuote.mutate(quote.id)}
               loading={selectQuote.isPending}
             >
-              Select
+              Select Quote
             </Button>
           )}
         </div>
