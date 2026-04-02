@@ -31,9 +31,12 @@ export default function RequestNewPage() {
     queryFn: () => clientsApi.list({ pageSize: 100 }).then(r => r.data),
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+
+  const selectedClientId = watch('clientId');
+  const selectedClient = clientsData?.items.find(c => c.id === selectedClientId);
 
   const createMutation = useMutation({
     mutationFn: (data: FormData) => serviceRequestsApi.create(data),
@@ -81,6 +84,27 @@ export default function RequestNewPage() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+            <select
+              {...register('clientId', {
+                onChange: (e) => {
+                  const client = clientsData?.items.find(c => c.id === e.target.value);
+                  if (client?.address) {
+                    setValue('location', client.address);
+                  }
+                },
+              })}
+              className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
+            >
+              <option value="">Select client...</option>
+              {clientsData?.items.map(c => (
+                <option key={c.id} value={c.id}>{c.companyName}</option>
+              ))}
+            </select>
+            {errors.clientId && <p className="mt-1 text-xs text-red-600">{errors.clientId.message}</p>}
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
             <input
               type="text"
@@ -88,19 +112,25 @@ export default function RequestNewPage() {
               className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
               placeholder="e.g. 123 Main St, Building A, Floor 2"
             />
+            {selectedClient?.address && (
+              <p className="mt-1 text-xs text-gray-500">Pre-filled from client address</p>
+            )}
             {errors.location && <p className="mt-1 text-xs text-red-600">{errors.location.message}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select
+              <input
+                type="text"
+                list="category-options"
                 {...register('category')}
                 className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
-              >
-                <option value="">Select category...</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+                placeholder="Select or type a category..."
+              />
+              <datalist id="category-options">
+                {CATEGORIES.map(c => <option key={c} value={c} />)}
+              </datalist>
               {errors.category && <p className="mt-1 text-xs text-red-600">{errors.category.message}</p>}
             </div>
 
@@ -115,20 +145,6 @@ export default function RequestNewPage() {
               </select>
               {errors.priority && <p className="mt-1 text-xs text-red-600">{errors.priority.message}</p>}
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-            <select
-              {...register('clientId')}
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
-            >
-              <option value="">Select client...</option>
-              {clientsData?.items.map(c => (
-                <option key={c.id} value={c.id}>{c.companyName}</option>
-              ))}
-            </select>
-            {errors.clientId && <p className="mt-1 text-xs text-red-600">{errors.clientId.message}</p>}
           </div>
 
           <div className="pt-2">
