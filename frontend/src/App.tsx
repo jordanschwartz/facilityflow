@@ -6,7 +6,7 @@ import { useAuthStore } from './stores/authStore';
 import { authApi } from './api/auth';
 import AppShell from './components/layout/AppShell';
 import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
+
 import DashboardPage from './pages/dashboard/DashboardPage';
 import RequestListPage from './pages/requests/RequestListPage';
 import RequestNewPage from './pages/requests/RequestNewPage';
@@ -53,7 +53,7 @@ export default function App() {
         <Toaster position="top-right" />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
           <Route path="/quotes/submit/:token" element={<QuoteSubmitPage />} />
           <Route path="/proposals/view/:token" element={<ProposalViewPage />} />
           <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>

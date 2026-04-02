@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../stores/authStore';
@@ -74,11 +74,8 @@ export default function LoginPage() {
               Sign In
             </Button>
           </form>
-          <p className="mt-6 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-brand-600 font-medium hover:text-brand-700">
-              Register here
-            </Link>
+          <p className="mt-6 text-center text-sm text-gray-500">
+            Contact your administrator for account access.
           </p>
         </div>
       </div>
