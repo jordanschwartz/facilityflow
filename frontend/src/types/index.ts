@@ -21,9 +21,56 @@ export interface DiscoveredVendor {
 export interface AuthUser {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
   name: string;
   role: UserRole;
+  isAdmin: boolean;
+  status: 'Active' | 'Inactive';
   createdAt: string;
+}
+
+export interface UserListItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  status: 'Active' | 'Inactive';
+  isAdmin: boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface UserDetail extends UserListItem {
+  updatedAt: string;
+  passwordChangedAt: string | null;
+}
+
+export interface CreateUserRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password?: string;
+}
+
+export interface UpdateUserRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: 'Active' | 'Inactive';
+}
+
+export interface UpdateProfileRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export interface PagedResult<T> {

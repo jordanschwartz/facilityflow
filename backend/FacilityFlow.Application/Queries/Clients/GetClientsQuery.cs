@@ -25,7 +25,8 @@ public class GetClientsQueryHandler : IRequestHandler<GetClientsQuery, PagedResu
         {
             var search = request.Search.ToLower();
             query = query.Where(c => c.CompanyName.ToLower().Contains(search)
-                                  || c.User.Name.ToLower().Contains(search)
+                                  || c.User.FirstName.ToLower().Contains(search)
+                                  || c.User.LastName.ToLower().Contains(search)
                                   || c.User.Email.ToLower().Contains(search));
         }
 

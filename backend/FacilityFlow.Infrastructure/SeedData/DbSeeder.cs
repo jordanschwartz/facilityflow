@@ -54,72 +54,97 @@ public static class DbSeeder
                 Id = OperatorUserId,
                 Email = "admin@facilityflow.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-                Name = "Admin Operator",
+                FirstName = "Admin",
+                LastName = "Operator",
                 Role = UserRole.Operator,
-                CreatedAt = DateTime.UtcNow
+                IsAdmin = true,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             },
             new()
             {
                 Id = Client1UserId,
                 Email = "client1@acme.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Client123!"),
-                Name = "Alice Acme",
+                FirstName = "Alice",
+                LastName = "Acme",
                 Role = UserRole.Client,
-                CreatedAt = DateTime.UtcNow
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             },
             new()
             {
                 Id = Client2UserId,
                 Email = "client2@buildright.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Client123!"),
-                Name = "Bob BuildRight",
+                FirstName = "Bob",
+                LastName = "BuildRight",
                 Role = UserRole.Client,
-                CreatedAt = DateTime.UtcNow
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             },
             new()
             {
                 Id = Vendor1UserId,
                 Email = "vendor.hvac@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Vendor123!"),
-                Name = "Victor HVAC",
+                FirstName = "Victor",
+                LastName = "HVAC",
                 Role = UserRole.Vendor,
-                CreatedAt = DateTime.UtcNow
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             },
             new()
             {
                 Id = Vendor2UserId,
                 Email = "vendor.electrical@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Vendor123!"),
-                Name = "Ellie Electric",
+                FirstName = "Ellie",
+                LastName = "Electric",
                 Role = UserRole.Vendor,
-                CreatedAt = DateTime.UtcNow
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             },
             new()
             {
                 Id = Vendor3UserId,
                 Email = "vendor.plumbing@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Vendor123!"),
-                Name = "Pete Plumbing",
+                FirstName = "Pete",
+                LastName = "Plumbing",
                 Role = UserRole.Vendor,
-                CreatedAt = DateTime.UtcNow
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             },
             new()
             {
                 Id = Vendor4UserId,
                 Email = "vendor.roofing@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Vendor123!"),
-                Name = "Rachel Roofing",
+                FirstName = "Rachel",
+                LastName = "Roofing",
                 Role = UserRole.Vendor,
-                CreatedAt = DateTime.UtcNow
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             },
             new()
             {
                 Id = Vendor5UserId,
                 Email = "vendor.general@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Vendor123!"),
-                Name = "Gary General",
+                FirstName = "Gary",
+                LastName = "General",
                 Role = UserRole.Vendor,
-                CreatedAt = DateTime.UtcNow
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             },
         };
         db.Users.AddRange(users);
@@ -206,9 +231,6 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         // ---- Service Requests ----
-        // SR1: New status, HVAC, Acme
-        // SR2: PendingQuotes status, Electrical, BuildRight — 2 invites, 1 submitted quote
-        // SR3: POReceived status, Roofing, Acme — selected quote, approved proposal, InProgress work order
         var now = DateTime.UtcNow;
         var serviceRequests = new List<ServiceRequest>
         {
@@ -259,8 +281,6 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         // ---- Vendor Invites ----
-        // SR2 has 2 invites (Vendor2/Electrical, Vendor5/General)
-        // SR3 has 1 invite (Vendor4/Roofing)
         var invites = new List<VendorInvite>
         {
             new()
@@ -292,8 +312,6 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         // ---- Quotes ----
-        // SR2: Quote1 (Vendor2, Submitted), Quote2 (Vendor5, Requested)
-        // SR3: Quote3 (Vendor4, Selected)
         var quotes = new List<Quote>
         {
             new()
@@ -334,7 +352,6 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         // ---- Proposal ----
-        // SR3 has an approved proposal linked to Quote3
         var proposals = new List<Proposal>
         {
             new()
@@ -355,7 +372,6 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         // ---- Work Order ----
-        // SR3 has an InProgress work order
         var workOrders = new List<WorkOrder>
         {
             new()

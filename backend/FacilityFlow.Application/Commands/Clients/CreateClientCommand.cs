@@ -28,8 +28,11 @@ public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, C
 
         // Auto-create user account with a generated password
         var password = $"Client{Guid.NewGuid():N}"[..16];
+        var nameParts = req.ContactName.Split(' ', 2);
+        var firstName = nameParts[0];
+        var lastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
         var authResult = await _authService.RegisterAsync(
-            new RegisterRequest(req.Email, password, req.ContactName, UserRole.Client));
+            new RegisterRequest(req.Email, password, firstName, lastName, UserRole.Client));
 
         var client = new Client
         {

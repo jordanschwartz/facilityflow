@@ -21,6 +21,10 @@ import QuoteSubmitPage from './pages/public/QuoteSubmitPage';
 import ProposalViewPage from './pages/public/ProposalViewPage';
 import InvoiceListPage from './pages/invoices/InvoiceListPage';
 import InvoiceDetailPage from './pages/invoices/InvoiceDetailPage';
+import UserListPage from './pages/admin/UserListPage';
+import UserNewPage from './pages/admin/UserNewPage';
+import UserDetailPage from './pages/admin/UserDetailPage';
+import ProfilePage from './pages/settings/ProfilePage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30000, retry: 1 } }
@@ -66,6 +70,10 @@ export default function App() {
             <Route path="clients" element={<ClientListPage />} />
             <Route path="clients/new" element={<ClientNewPage />} />
             <Route path="clients/:id" element={<ClientDetailPage />} />
+            <Route path="admin/users" element={<UserListPage />} />
+            <Route path="admin/users/new" element={<UserNewPage />} />
+            <Route path="admin/users/:id" element={<UserDetailPage />} />
+            <Route path="settings/profile" element={<ProfilePage />} />
             {/* Redirects from old routes */}
             <Route path="requests" element={<Navigate to="/work-orders" replace />} />
             <Route path="requests/new" element={<Navigate to="/work-orders/new" replace />} />

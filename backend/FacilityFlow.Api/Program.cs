@@ -4,6 +4,7 @@ using FacilityFlow.Application;
 using FacilityFlow.Infrastructure;
 using FacilityFlow.Infrastructure.Persistence;
 using FacilityFlow.Infrastructure.SeedData;
+using FacilityFlow.Core.Enums;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -153,6 +154,9 @@ using (var scope = app.Services.CreateScope())
         {
             await DbSeeder.SeedAsync(db);
         }
+
+        // Ensure admin user exists
+        await AdminSeeder.SeedAdminAsync(db);
     }
     catch (Exception ex)
     {

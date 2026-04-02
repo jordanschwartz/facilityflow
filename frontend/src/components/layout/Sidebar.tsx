@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { HomeIcon, WrenchScrewdriverIcon, BuildingOfficeIcon, UserGroupIcon, BanknotesIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, WrenchScrewdriverIcon, BuildingOfficeIcon, UserGroupIcon, BanknotesIcon, UsersIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
 export default function Sidebar() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const isAdmin = user?.role === 'Operator' || user?.isAdmin;
 
   return (
     <div className="flex flex-col w-64 bg-gray-900 min-h-screen">
@@ -41,8 +42,32 @@ export default function Sidebar() {
             {label}
           </NavLink>
         ))}
+        {isAdmin && (
+          <NavLink
+            to="/admin/users"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive ? 'bg-brand-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              }`
+            }
+          >
+            <UsersIcon className="w-5 h-5" />
+            User Management
+          </NavLink>
+        )}
       </nav>
       <div className="px-3 py-4 border-t border-gray-700">
+        <NavLink
+          to="/settings/profile"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1 ${
+              isActive ? 'bg-brand-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            }`
+          }
+        >
+          <Cog6ToothIcon className="w-5 h-5" />
+          Settings
+        </NavLink>
         <div className="px-3 py-2 mb-1">
           <p className="text-white text-sm font-medium truncate">{user?.name}</p>
           <p className="text-gray-400 text-xs truncate">{user?.email}</p>

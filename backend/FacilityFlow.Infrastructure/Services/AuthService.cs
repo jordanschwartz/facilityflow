@@ -4,7 +4,6 @@ using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Services;
 using FacilityFlow.Infrastructure.Persistence;
-using Mapster;
 using Microsoft.EntityFrameworkCore;
 
 namespace FacilityFlow.Infrastructure.Services;
@@ -33,16 +32,19 @@ public class AuthService : IAuthService
             Id = Guid.NewGuid(),
             Email = req.Email.ToLower().Trim(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
-            Name = req.Name,
+            FirstName = req.FirstName,
+            LastName = req.LastName,
             Role = req.Role,
-            CreatedAt = DateTime.UtcNow
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
         var token = _tokenService.GenerateToken(user);
-        return new AuthResponse(token, user.Adapt<UserDto>());
+        return new AuthResponse(token, ToUserDto(user));
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest req)
@@ -53,14 +55,31 @@ public class AuthService : IAuthService
         if (!BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             throw new NotFoundException("Invalid credentials.");
 
+        if (user.Status == UserStatus.Inactive)
+            throw new ForbiddenException("Account is inactive.");
+
+        user.LastLoginAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
         var token = _tokenService.GenerateToken(user);
-        return new AuthResponse(token, user.Adapt<UserDto>());
+        return new AuthResponse(token, ToUserDto(user));
     }
 
     public async Task<UserDto> GetMeAsync(Guid userId)
     {
         var user = await _db.Users.FindAsync(userId)
             ?? throw new NotFoundException("User not found.");
-        return user.Adapt<UserDto>();
+        return ToUserDto(user);
     }
+
+    private static UserDto ToUserDto(User user) => new(
+        user.Id,
+        user.Email,
+        user.FirstName,
+        user.LastName,
+        user.Name,
+        user.Role.ToString(),
+        user.IsAdmin,
+        user.Status.ToString(),
+        user.CreatedAt);
 }

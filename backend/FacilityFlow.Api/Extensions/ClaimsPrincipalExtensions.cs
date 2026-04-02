@@ -9,4 +9,7 @@ public static class ClaimsPrincipalExtensions
 
     public static string GetRole(this ClaimsPrincipal user) =>
         user.FindFirstValue(ClaimTypes.Role)!;
+
+    public static bool GetIsAdmin(this ClaimsPrincipal user) =>
+        bool.TryParse(user.FindFirstValue("is_admin"), out var isAdmin) && isAdmin;
 }

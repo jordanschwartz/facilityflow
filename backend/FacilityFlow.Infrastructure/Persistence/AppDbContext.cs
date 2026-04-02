@@ -33,6 +33,8 @@ public class AppDbContext : DbContext
 
         // Enum → string conversions
         modelBuilder.Entity<User>().Property(u => u.Role).HasConversion<string>();
+        modelBuilder.Entity<User>().Property(u => u.Status).HasConversion<string>();
+        modelBuilder.Entity<User>().Ignore(u => u.Name);
         modelBuilder.Entity<ServiceRequest>().Property(s => s.Priority).HasConversion<string>();
         modelBuilder.Entity<ServiceRequest>().Property(s => s.Status).HasConversion<string>();
         modelBuilder.Entity<VendorInvite>().Property(v => v.Status).HasConversion<string>();
