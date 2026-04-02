@@ -45,7 +45,7 @@ public class UpdateWorkOrderStatusCommandHandler : IRequestHandler<UpdateWorkOrd
         // Closing the work order completes the service request
         if (request.Request.Status == WorkOrderStatus.Closed)
         {
-            wo.ServiceRequest.Status = ServiceRequestStatus.Completed;
+            wo.ServiceRequest.Status = ServiceRequestStatus.JobCompleted;
             wo.ServiceRequest.UpdatedAt = DateTime.UtcNow;
         }
 

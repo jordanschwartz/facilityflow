@@ -207,8 +207,8 @@ public static class DbSeeder
 
         // ---- Service Requests ----
         // SR1: New status, HVAC, Acme
-        // SR2: Quoting status, Electrical, BuildRight — 2 invites, 1 submitted quote
-        // SR3: Approved status, Roofing, Acme — selected quote, approved proposal, InProgress work order
+        // SR2: PendingQuotes status, Electrical, BuildRight — 2 invites, 1 submitted quote
+        // SR3: POReceived status, Roofing, Acme — selected quote, approved proposal, InProgress work order
         var now = DateTime.UtcNow;
         var serviceRequests = new List<ServiceRequest>
         {
@@ -234,7 +234,7 @@ public static class DbSeeder
                 Location = "200 Build Ave, Utility Room B1",
                 Category = "Electrical",
                 Priority = Priority.High,
-                Status = ServiceRequestStatus.Quoting,
+                Status = ServiceRequestStatus.PendingQuotes,
                 ClientId = Client2Id,
                 CreatedById = Client2UserId,
                 CreatedAt = now.AddDays(-20),
@@ -248,7 +248,7 @@ public static class DbSeeder
                 Location = "100 Acme Way, Building C, Roof",
                 Category = "Roofing",
                 Priority = Priority.Urgent,
-                Status = ServiceRequestStatus.Approved,
+                Status = ServiceRequestStatus.POReceived,
                 ClientId = Client1Id,
                 CreatedById = Client1UserId,
                 CreatedAt = now.AddDays(-30),

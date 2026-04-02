@@ -30,12 +30,22 @@ public class GetPipelineQueryHandler : IRequestHandler<GetPipelineQuery, Pipelin
         var statuses = new[]
         {
             ServiceRequestStatus.New,
+            ServiceRequestStatus.Qualifying,
             ServiceRequestStatus.Sourcing,
-            ServiceRequestStatus.Quoting,
+            ServiceRequestStatus.SchedulingSiteVisit,
+            ServiceRequestStatus.ScheduleConfirmed,
+            ServiceRequestStatus.PendingQuotes,
+            ServiceRequestStatus.ProposalReady,
             ServiceRequestStatus.PendingApproval,
-            ServiceRequestStatus.Approved,
-            ServiceRequestStatus.Rejected,
-            ServiceRequestStatus.Completed
+            ServiceRequestStatus.AwaitingPO,
+            ServiceRequestStatus.POReceived,
+            ServiceRequestStatus.JobInProgress,
+            ServiceRequestStatus.JobCompleted,
+            ServiceRequestStatus.Verification,
+            ServiceRequestStatus.InvoiceSent,
+            ServiceRequestStatus.InvoicePaid,
+            ServiceRequestStatus.Closed,
+            ServiceRequestStatus.Cancelled
         };
 
         var columns = new Dictionary<string, PipelineColumnDto>();
@@ -63,10 +73,11 @@ public class GetPipelineQueryHandler : IRequestHandler<GetPipelineQuery, Pipelin
         var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var stats = new DashboardStatsDto(
-            TotalOpenRequests: allSrs.Count(sr => sr.Status != ServiceRequestStatus.Completed && sr.Status != ServiceRequestStatus.Rejected),
-            PendingQuotes: allSrs.Count(sr => sr.Status == ServiceRequestStatus.Quoting),
+            TotalOpenRequests: allSrs.Count(sr => sr.Status != ServiceRequestStatus.Closed && sr.Status != ServiceRequestStatus.Cancelled),
+            PendingQuotes: allSrs.Count(sr => sr.Status == ServiceRequestStatus.PendingQuotes),
             AwaitingApproval: allSrs.Count(sr => sr.Status == ServiceRequestStatus.PendingApproval),
-            CompletedThisMonth: allSrs.Count(sr => sr.Status == ServiceRequestStatus.Completed && sr.UpdatedAt >= startOfMonth)
+            JobsInProgress: allSrs.Count(sr => sr.Status == ServiceRequestStatus.JobInProgress),
+            CompletedThisMonth: allSrs.Count(sr => sr.Status == ServiceRequestStatus.JobCompleted && sr.UpdatedAt >= startOfMonth)
         );
 
         return new PipelineResponse(columns, stats);

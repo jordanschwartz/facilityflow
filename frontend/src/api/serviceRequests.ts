@@ -15,4 +15,14 @@ export const serviceRequestsApi = {
   createInvites: (id: string, vendorIds: string[]) =>
     apiClient.post(`/service-requests/${id}/invites`, { vendorIds }),
   getQuotes: (id: string) => apiClient.get<Quote[]>(`/service-requests/${id}/quotes`),
+  getAllowedTransitions: (id: string) => apiClient.get<string[]>(`/service-requests/${id}/allowed-transitions`),
+  uploadPo: (id: string, data: { poNumber: string; poAmount?: number; file: File }) => {
+    const form = new FormData();
+    form.append('poNumber', data.poNumber);
+    if (data.poAmount != null) form.append('poAmount', data.poAmount.toString());
+    form.append('file', data.file);
+    return apiClient.post(`/service-requests/${id}/upload-po`, form);
+  },
+  updateSchedule: (id: string, scheduledDate: string) =>
+    apiClient.patch(`/service-requests/${id}/schedule`, { scheduledDate }),
 };

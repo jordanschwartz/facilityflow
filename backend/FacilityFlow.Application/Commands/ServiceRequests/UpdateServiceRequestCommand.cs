@@ -49,7 +49,13 @@ public class UpdateServiceRequestCommandHandler : IRequestHandler<UpdateServiceR
             sr.Quotes.Count,
             sr.Proposal != null,
             sr.WorkOrder != null,
-            sr.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList()
+            sr.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList(),
+            sr.PoNumber,
+            sr.PoAmount,
+            sr.PoFileUrl,
+            sr.PoReceivedAt,
+            sr.ScheduledDate,
+            sr.ScheduleConfirmedAt
         );
     }
 }

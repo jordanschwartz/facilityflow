@@ -23,4 +23,14 @@ public class ServiceRequest
     public Proposal? Proposal { get; set; }
     public WorkOrder? WorkOrder { get; set; }
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
+    // PO tracking
+    public string? PoNumber { get; set; }
+    public decimal? PoAmount { get; set; }
+    public string? PoFileUrl { get; set; }
+    public DateTime? PoReceivedAt { get; set; }
+
+    // Scheduling
+    public DateTime? ScheduledDate { get; set; }
+    public DateTime? ScheduleConfirmedAt { get; set; }
 }

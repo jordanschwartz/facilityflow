@@ -78,4 +78,29 @@ public class ServiceRequestsController : ControllerBase
         var result = await _mediator.Send(new GetVendorInvitesQuery(id));
         return Ok(result);
     }
+
+    [HttpPost("{id:guid}/upload-po")]
+    [Authorize(Roles = "Operator")]
+    [RequestSizeLimit(104_857_600)]
+    public async Task<IActionResult> UploadPo(Guid id, [FromForm] string poNumber, [FromForm] decimal? poAmount, IFormFile file)
+    {
+        using var stream = file.OpenReadStream();
+        var result = await _mediator.Send(new UploadPoCommand(id, poNumber, poAmount, stream, file.FileName, file.ContentType));
+        return Ok(result);
+    }
+
+    [HttpPatch("{id:guid}/schedule")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> UpdateSchedule(Guid id, [FromBody] UpdateScheduleCommand cmd)
+    {
+        var result = await _mediator.Send(new UpdateScheduleCommand(id, cmd.ScheduledDate));
+        return Ok(result);
+    }
+
+    [HttpGet("{id:guid}/allowed-transitions")]
+    public async Task<IActionResult> GetAllowedTransitions(Guid id)
+    {
+        var result = await _mediator.Send(new GetAllowedTransitionsQuery(id));
+        return Ok(result);
+    }
 }

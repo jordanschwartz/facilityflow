@@ -1,33 +1,37 @@
 using FacilityFlow.Application.DTOs.Common;
 using FacilityFlow.Application.DTOs.ServiceRequests;
 using FacilityFlow.Core.DTOs.Auth;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
-using FacilityFlow.Core.StateMachines;
 using Mapster;
 using MediatR;
 
 namespace FacilityFlow.Application.Commands.ServiceRequests;
 
-public record UpdateServiceRequestStatusCommand(Guid Id, UpdateServiceRequestStatusRequest Request) : IRequest<ServiceRequestDto>;
+public record UpdateScheduleCommand(Guid Id, DateTime ScheduledDate) : IRequest<ServiceRequestDto>;
 
-public class UpdateServiceRequestStatusCommandHandler : IRequestHandler<UpdateServiceRequestStatusCommand, ServiceRequestDto>
+public class UpdateScheduleCommandHandler : IRequestHandler<UpdateScheduleCommand, ServiceRequestDto>
 {
     private readonly IServiceRequestRepository _serviceRequests;
 
-    public UpdateServiceRequestStatusCommandHandler(IServiceRequestRepository serviceRequests)
+    public UpdateScheduleCommandHandler(IServiceRequestRepository serviceRequests)
         => _serviceRequests = serviceRequests;
 
-    public async Task<ServiceRequestDto> Handle(UpdateServiceRequestStatusCommand command, CancellationToken cancellationToken)
+    public async Task<ServiceRequestDto> Handle(UpdateScheduleCommand command, CancellationToken cancellationToken)
     {
         var sr = await _serviceRequests.GetWithDetailsAsync(command.Id)
             ?? throw new NotFoundException("Service request not found.");
 
-        if (!ServiceRequestStateMachine.CanTransition(sr.Status, command.Request.Status))
-            throw new InvalidTransitionException(sr.Status.ToString(), command.Request.Status.ToString());
-
-        sr.Status = command.Request.Status;
+        sr.ScheduledDate = DateTime.SpecifyKind(command.ScheduledDate, DateTimeKind.Utc);
         sr.UpdatedAt = DateTime.UtcNow;
+
+        if (sr.Status == ServiceRequestStatus.SchedulingSiteVisit)
+        {
+            sr.Status = ServiceRequestStatus.ScheduleConfirmed;
+            sr.ScheduleConfirmedAt = DateTime.UtcNow;
+        }
+
         await _serviceRequests.SaveChangesAsync();
 
         return new ServiceRequestDto(

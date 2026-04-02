@@ -69,7 +69,7 @@ public class RespondToProposalCommandHandler : IRequestHandler<RespondToProposal
 
         if (proposal.Status == ProposalStatus.Approved)
         {
-            proposal.ServiceRequest.Status = ServiceRequestStatus.Approved;
+            proposal.ServiceRequest.Status = ServiceRequestStatus.AwaitingPO;
             proposal.ServiceRequest.UpdatedAt = DateTime.UtcNow;
 
             var workOrder = new WorkOrder

@@ -1,33 +1,45 @@
 using FacilityFlow.Application.DTOs.Common;
 using FacilityFlow.Application.DTOs.ServiceRequests;
 using FacilityFlow.Core.DTOs.Auth;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
-using FacilityFlow.Core.StateMachines;
+using FacilityFlow.Core.Interfaces.Services;
 using Mapster;
 using MediatR;
 
 namespace FacilityFlow.Application.Commands.ServiceRequests;
 
-public record UpdateServiceRequestStatusCommand(Guid Id, UpdateServiceRequestStatusRequest Request) : IRequest<ServiceRequestDto>;
+public record UploadPoCommand(Guid Id, string PoNumber, decimal? PoAmount, Stream FileStream, string FileName, string ContentType) : IRequest<ServiceRequestDto>;
 
-public class UpdateServiceRequestStatusCommandHandler : IRequestHandler<UpdateServiceRequestStatusCommand, ServiceRequestDto>
+public class UploadPoCommandHandler : IRequestHandler<UploadPoCommand, ServiceRequestDto>
 {
     private readonly IServiceRequestRepository _serviceRequests;
+    private readonly IFileStorageService _fileStorage;
 
-    public UpdateServiceRequestStatusCommandHandler(IServiceRequestRepository serviceRequests)
-        => _serviceRequests = serviceRequests;
+    public UploadPoCommandHandler(IServiceRequestRepository serviceRequests, IFileStorageService fileStorage)
+    {
+        _serviceRequests = serviceRequests;
+        _fileStorage = fileStorage;
+    }
 
-    public async Task<ServiceRequestDto> Handle(UpdateServiceRequestStatusCommand command, CancellationToken cancellationToken)
+    public async Task<ServiceRequestDto> Handle(UploadPoCommand command, CancellationToken cancellationToken)
     {
         var sr = await _serviceRequests.GetWithDetailsAsync(command.Id)
             ?? throw new NotFoundException("Service request not found.");
 
-        if (!ServiceRequestStateMachine.CanTransition(sr.Status, command.Request.Status))
-            throw new InvalidTransitionException(sr.Status.ToString(), command.Request.Status.ToString());
+        if (sr.Status != ServiceRequestStatus.AwaitingPO)
+            throw new InvalidOperationException("Service request is not awaiting a PO.");
 
-        sr.Status = command.Request.Status;
+        var (url, _) = await _fileStorage.SaveFileAsync($"po/{sr.Id}", command.FileStream, command.FileName, command.ContentType);
+
+        sr.PoNumber = command.PoNumber;
+        sr.PoAmount = command.PoAmount;
+        sr.PoFileUrl = url;
+        sr.PoReceivedAt = DateTime.UtcNow;
+        sr.Status = ServiceRequestStatus.POReceived;
         sr.UpdatedAt = DateTime.UtcNow;
+
         await _serviceRequests.SaveChangesAsync();
 
         return new ServiceRequestDto(

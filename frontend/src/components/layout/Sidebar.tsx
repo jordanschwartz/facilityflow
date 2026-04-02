@@ -1,10 +1,9 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { HomeIcon, ClipboardDocumentListIcon, WrenchScrewdriverIcon, BuildingOfficeIcon, UserGroupIcon, BanknotesIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, WrenchScrewdriverIcon, BuildingOfficeIcon, UserGroupIcon, BanknotesIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: HomeIcon },
-  { to: '/requests', label: 'Requests', icon: ClipboardDocumentListIcon },
   { to: '/work-orders', label: 'Work Orders', icon: WrenchScrewdriverIcon },
   { to: '/invoices', label: 'Invoices', icon: BanknotesIcon },
   { to: '/vendors', label: 'Vendors', icon: BuildingOfficeIcon },

@@ -7,46 +7,62 @@ import { serviceRequestsApi } from '../../api/serviceRequests';
 import type { ServiceRequestStatus, ServiceRequestSummary } from '../../types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import PriorityBadge from '../../components/ui/PriorityBadge';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { formatRelativeTime } from '../../utils/formatters';
 import toast from 'react-hot-toast';
-import {
-  ClipboardDocumentListIcon,
-  ChatBubbleLeftRightIcon,
-  ClockIcon,
-  CheckCircleIcon,
-} from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
-const PIPELINE_STAGES: ServiceRequestStatus[] = [
-  'New', 'Sourcing', 'Quoting', 'PendingApproval', 'Approved', 'Rejected', 'Completed',
+interface PipelinePhase {
+  id: string;
+  label: string;
+  color: string;
+  statuses: ServiceRequestStatus[];
+}
+
+const PIPELINE_PHASES: PipelinePhase[] = [
+  {
+    id: 'intake',
+    label: 'Intake',
+    color: 'bg-gray-200',
+    statuses: ['New', 'Qualifying'],
+  },
+  {
+    id: 'sourcing',
+    label: 'Sourcing',
+    color: 'bg-blue-200',
+    statuses: ['Sourcing'],
+  },
+  {
+    id: 'scheduling',
+    label: 'Scheduling',
+    color: 'bg-indigo-200',
+    statuses: ['SchedulingSiteVisit', 'ScheduleConfirmed'],
+  },
+  {
+    id: 'quoting',
+    label: 'Quoting & Approval',
+    color: 'bg-yellow-200',
+    statuses: ['PendingQuotes', 'ProposalReady', 'PendingApproval'],
+  },
+  {
+    id: 'po',
+    label: 'PO Gate',
+    color: 'bg-red-100',
+    statuses: ['AwaitingPO', 'POReceived'],
+  },
+  {
+    id: 'execution',
+    label: 'Execution',
+    color: 'bg-green-100',
+    statuses: ['JobInProgress', 'JobCompleted'],
+  },
+  {
+    id: 'closeout',
+    label: 'Closeout',
+    color: 'bg-emerald-100',
+    statuses: ['Verification', 'InvoiceSent', 'InvoicePaid'],
+  },
 ];
-
-const STAGE_TAB: Partial<Record<ServiceRequestStatus, string>> = {
-  Sourcing: 'vendors',
-  Quoting: 'quotes',
-  PendingApproval: 'proposal',
-  Approved: 'workorder',
-  Completed: 'workorder',
-};
-
-const STAGE_LABELS: Record<string, string> = {
-  New: 'New',
-  Sourcing: 'Sourcing',
-  Quoting: 'Quoting',
-  PendingApproval: 'Pending Approval',
-  Approved: 'Approved',
-  Rejected: 'Rejected',
-  Completed: 'Completed',
-};
-
-const STAGE_COLORS: Record<string, string> = {
-  New: 'bg-gray-100 text-gray-700',
-  Sourcing: 'bg-blue-100 text-blue-700',
-  Quoting: 'bg-yellow-100 text-yellow-700',
-  PendingApproval: 'bg-purple-100 text-purple-700',
-  Approved: 'bg-green-100 text-green-700',
-  Rejected: 'bg-red-100 text-red-700',
-  Completed: 'bg-emerald-100 text-emerald-700',
-};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -69,16 +85,37 @@ export default function DashboardPage() {
     },
   });
 
+  // Gather all items for a phase from the pipeline columns
+  const getPhaseItems = (phase: PipelinePhase): ServiceRequestSummary[] => {
+    if (!data?.columns) return [];
+    return phase.statuses.flatMap(status => data.columns[status]?.items ?? []);
+  };
+
+  const getPhaseCount = (phase: PipelinePhase): number => {
+    if (!data?.columns) return 0;
+    return phase.statuses.reduce((sum, status) => sum + (data.columns[status]?.count ?? 0), 0);
+  };
+
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
-    const sourceCol = result.source.droppableId as ServiceRequestStatus;
-    const destCol = result.destination.droppableId as ServiceRequestStatus;
-    if (sourceCol === destCol) return;
+    const sourcePhaseId = result.source.droppableId;
+    const destPhaseId = result.destination.droppableId;
+    if (sourcePhaseId === destPhaseId) return;
 
-    const item = data?.columns[sourceCol]?.items[result.source.index];
+    // Find the source phase and locate the item
+    const sourcePhase = PIPELINE_PHASES.find(p => p.id === sourcePhaseId);
+    if (!sourcePhase) return;
+
+    const sourceItems = getPhaseItems(sourcePhase);
+    const item = sourceItems[result.source.index];
     if (!item) return;
 
-    updateStatus.mutate({ id: item.id, status: destCol });
+    // Find the destination phase and set to its first status
+    const destPhase = PIPELINE_PHASES.find(p => p.id === destPhaseId);
+    if (!destPhase) return;
+
+    const newStatus = destPhase.statuses[0];
+    updateStatus.mutate({ id: item.id, status: newStatus });
   };
 
   if (isLoading) {
@@ -89,61 +126,39 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = data?.stats;
-
-  const statCards = [
-    { label: 'Total Open Requests', value: stats?.totalOpenRequests ?? 0, icon: ClipboardDocumentListIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Pending Quotes', value: stats?.pendingQuotes ?? 0, icon: ChatBubbleLeftRightIcon, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { label: 'Awaiting Approval', value: stats?.awaitingApproval ?? 0, icon: ClockIcon, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Completed This Month', value: stats?.completedThisMonth ?? 0, icon: CheckCircleIcon, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  ];
-
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">Overview of your service pipeline</p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
-              </div>
-              <div className={`${bg} p-3 rounded-lg`}>
-                <Icon className={`w-6 h-6 ${color}`} />
-              </div>
-            </div>
-          </div>
-        ))}
+        <h1 className="text-2xl font-bold text-gray-900">Operations Command Center</h1>
+        <p className="mt-1 text-sm text-gray-500">Work order pipeline overview</p>
       </div>
 
       {/* Kanban */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {PIPELINE_STAGES.map((stage) => {
-            const col = data?.columns[stage];
-            const items: ServiceRequestSummary[] = col?.items ?? [];
-            const count = col?.count ?? 0;
+          {PIPELINE_PHASES.map((phase) => {
+            const items = getPhaseItems(phase);
+            const count = getPhaseCount(phase);
+            const isPOGate = phase.id === 'po';
             return (
-              <div key={stage} className="flex-shrink-0 w-72">
+              <div key={phase.id} className="flex-shrink-0 w-72">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-700">{STAGE_LABELS[stage]}</h3>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STAGE_COLORS[stage]}`}>
+                  <h3 className="text-sm font-semibold text-gray-700">{phase.label}</h3>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${phase.color} ${isPOGate ? 'text-red-700' : 'text-gray-700'}`}>
                     {count}
                   </span>
                 </div>
-                <Droppable droppableId={stage}>
+                <Droppable droppableId={phase.id}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={`min-h-32 rounded-xl p-2 space-y-2 transition-colors ${
-                        snapshot.isDraggingOver ? 'bg-brand-50 border-2 border-brand-200' : 'bg-gray-100'
+                        snapshot.isDraggingOver
+                          ? 'bg-brand-50 border-2 border-brand-200'
+                          : isPOGate
+                            ? 'bg-red-50 border border-red-200'
+                            : 'bg-gray-100'
                       }`}
                     >
                       {items.map((item, index) => (
@@ -153,23 +168,29 @@ export default function DashboardPage() {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              onClick={() => {
-                                const tab = STAGE_TAB[item.status];
-                                navigate(`/requests/${item.id}${tab ? `?tab=${tab}` : ''}`);
-                              }}
+                              onClick={() => navigate(`/work-orders/${item.id}`)}
                               className={`bg-white rounded-lg border p-3 cursor-pointer hover:border-brand-300 transition-all ${
                                 snapshot.isDragging ? 'shadow-lg border-brand-300' : 'border-gray-200 shadow-sm'
                               }`}
                             >
                               <p className="text-sm font-medium text-gray-900 line-clamp-2 mb-2">{item.title}</p>
                               <p className="text-xs text-gray-500 mb-2">{item.client?.companyName}</p>
-                              <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                                <StatusBadge status={item.status} />
                                 <PriorityBadge priority={item.priority} />
-                                <span className="text-xs text-gray-400">{formatRelativeTime(item.createdAt)}</span>
                               </div>
-                              {item.quoteCount > 0 && (
-                                <div className="mt-2 text-xs text-gray-500">
-                                  {item.quoteCount} quote{item.quoteCount !== 1 ? 's' : ''}
+                              <div className="flex items-center justify-between text-xs text-gray-400">
+                                <span>{formatRelativeTime(item.updatedAt)}</span>
+                                {item.quoteCount > 0 && (
+                                  <span className="text-gray-500">
+                                    {item.quoteCount} quote{item.quoteCount !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+                              {item.status === 'AwaitingPO' && (
+                                <div className="mt-1.5 text-xs font-medium text-red-600 flex items-center gap-1">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+                                  Awaiting PO
                                 </div>
                               )}
                             </div>

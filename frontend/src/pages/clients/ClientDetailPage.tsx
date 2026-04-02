@@ -129,14 +129,14 @@ export default function ClientDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-gray-900">Service Requests</h2>
-              <Link to={`/requests/new`} className="text-sm text-brand-600 hover:text-brand-700 font-medium">+ New Request</Link>
+              <Link to={`/work-orders/new`} className="text-sm text-brand-600 hover:text-brand-700 font-medium">+ New Work Order</Link>
             </div>
             {(requests?.items ?? []).length === 0 ? (
               <p className="text-sm text-gray-500">No service requests for this client yet</p>
             ) : (
               <div className="space-y-2">
                 {requests?.items.map(sr => (
-                  <Link key={sr.id} to={`/requests/${sr.id}`} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-brand-200 transition-colors">
+                  <Link key={sr.id} to={`/work-orders/${sr.id}`} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-brand-200 transition-colors">
                     <div>
                       <p className="text-sm font-medium text-gray-900">{sr.title}</p>
                       <p className="text-xs text-gray-500">{formatDate(sr.createdAt)}</p>

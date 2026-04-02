@@ -71,7 +71,8 @@ public class CreateProposalCommandHandler : IRequestHandler<CreateProposalComman
             Summary = req.Summary,
             NotToExceedPrice = req.NotToExceedPrice,
             UseNtePricing = req.UseNtePricing,
-            ProposedStartDate = req.ProposedStartDate,
+            ProposedStartDate = req.ProposedStartDate.HasValue
+                ? DateTime.SpecifyKind(req.ProposedStartDate.Value, DateTimeKind.Utc) : null,
             EstimatedDuration = req.EstimatedDuration,
             TermsAndConditions = req.TermsAndConditions ?? DefaultTermsAndConditions,
             InternalNotes = req.InternalNotes,
@@ -94,6 +95,10 @@ public class CreateProposalCommandHandler : IRequestHandler<CreateProposalComman
                 AttachmentId = attachmentId
             });
         }
+
+        // Move SR to ProposalReady
+        sr.Status = ServiceRequestStatus.ProposalReady;
+        sr.UpdatedAt = DateTime.UtcNow;
 
         await _proposals.SaveChangesAsync();
 

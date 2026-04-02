@@ -78,10 +78,10 @@ public class SubmitQuoteByTokenCommandHandler : IRequestHandler<SubmitQuoteByTok
         if (invite != null)
             invite.Status = VendorInviteStatus.Quoted;
 
-        // Transition SR to Quoting if in Sourcing
+        // Transition SR to PendingQuotes if in Sourcing
         if (quote.ServiceRequest.Status == ServiceRequestStatus.Sourcing)
         {
-            quote.ServiceRequest.Status = ServiceRequestStatus.Quoting;
+            quote.ServiceRequest.Status = ServiceRequestStatus.PendingQuotes;
             quote.ServiceRequest.UpdatedAt = DateTime.UtcNow;
         }
 

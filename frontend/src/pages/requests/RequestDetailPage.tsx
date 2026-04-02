@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -8,13 +8,13 @@ import toast from 'react-hot-toast';
 import { serviceRequestsApi } from '../../api/serviceRequests';
 import { vendorsApi } from '../../api/vendors';
 import { quotesApi } from '../../api/quotes';
-import FindVendorsModal from '../../components/vendors/FindVendorsModal';
-import type { VendorSourcingResult, Quote } from '../../types';
-import { proposalsApi } from '../../api/proposals';
 import { commentsApi } from '../../api/comments';
+import { proposalsApi } from '../../api/proposals';
+import { invoicesApi } from '../../api/invoices';
+import FindVendorsModal from '../../components/vendors/FindVendorsModal';
 import ProposalBuilder from '../../components/proposals/ProposalBuilder';
 import ProposalDetail from '../../components/proposals/ProposalDetail';
-import type { ServiceRequestStatus } from '../../types';
+import type { ServiceRequestStatus, Quote, VendorSourcingResult } from '../../types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityBadge from '../../components/ui/PriorityBadge';
@@ -23,18 +23,81 @@ import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import { formatDate, formatCurrency, formatRelativeTime } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
+import {
+  PaperClipIcon,
+  XMarkIcon,
+  ExclamationTriangleIcon,
+  CalendarDaysIcon,
+  DocumentTextIcon,
+  ArrowUpTrayIcon,
+} from '@heroicons/react/24/solid';
+import {
+  ClockIcon,
+  MapPinIcon,
+  TagIcon,
+  UserGroupIcon,
+  CurrencyDollarIcon,
+  InformationCircleIcon,
+} from '@heroicons/react/24/outline';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
 
+const STATUS_LABELS: Record<string, string> = {
+  New: 'New',
+  Qualifying: 'Qualifying',
+  Sourcing: 'Sourcing',
+  SchedulingSiteVisit: 'Scheduling Site Visit',
+  ScheduleConfirmed: 'Schedule Confirmed',
+  PendingQuotes: 'Pending Quotes',
+  ProposalReady: 'Proposal Ready',
+  PendingApproval: 'Pending Approval',
+  AwaitingPO: 'Awaiting PO',
+  POReceived: 'PO Received',
+  JobInProgress: 'Job In Progress',
+  JobCompleted: 'Job Completed',
+  Verification: 'Verification',
+  InvoiceSent: 'Invoice Sent',
+  InvoicePaid: 'Invoice Paid',
+  Closed: 'Closed',
+  Cancelled: 'Cancelled',
+};
+
+const TABS = ['timeline', 'details', 'vendors', 'proposal', 'po-scheduling', 'invoice'] as const;
+type Tab = (typeof TABS)[number];
+const TAB_LABELS: Record<Tab, string> = {
+  timeline: 'Timeline',
+  details: 'Details',
+  vendors: 'Vendors & Quotes',
+  proposal: 'Proposal',
+  'po-scheduling': 'PO & Scheduling',
+  invoice: 'Invoice',
+};
+
+const commentSchema = z.object({ text: z.string().min(1, 'Comment cannot be empty') });
+type CommentForm = z.infer<typeof commentSchema>;
+
+const detailsSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  location: z.string().min(1),
+  category: z.string().min(1),
+  priority: z.string().min(1),
+});
+type DetailsForm = z.infer<typeof detailsSchema>;
+
+const poSchema = z.object({
+  poNumber: z.string().min(1, 'PO number is required'),
+  poAmount: z.string().optional(),
+});
+type PoForm = z.infer<typeof poSchema>;
+
+// ─── QuoteDetailModal (reused from previous) ─────────────────────────────────
 function QuoteDetailModal({ quote, open, onClose }: { quote: Quote; open: boolean; onClose: () => void }) {
   const hasLineItems = quote.lineItems && quote.lineItems.length > 0;
   const hasAttachments = quote.attachments && quote.attachments.length > 0;
-
   return (
     <Modal open={open} onClose={onClose} title={`Quote — ${quote.vendor?.companyName}`} size="lg">
       <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
-
-        {/* Price */}
         <div className="flex items-center gap-6">
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Price</p>
@@ -47,126 +110,44 @@ function QuoteDetailModal({ quote, open, onClose }: { quote: Quote; open: boolea
             </div>
           )}
         </div>
-
-        {/* Scope */}
         {quote.scopeOfWork && (
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Scope of Work</p>
             <p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.scopeOfWork}</p>
           </div>
         )}
-
-        {/* Scheduling / Meta */}
         {(quote.proposedStartDate || quote.estimatedDurationValue != null || quote.vendorAvailability || quote.validUntil || quote.submittedAt) && (
           <div className="grid grid-cols-2 gap-3">
-            {quote.submittedAt && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Submitted</p>
-                <p className="text-sm text-gray-700">{formatDate(quote.submittedAt)}</p>
-              </div>
-            )}
-            {quote.proposedStartDate && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Proposed Start</p>
-                <p className="text-sm text-gray-700">{formatDate(quote.proposedStartDate)}</p>
-              </div>
-            )}
-            {quote.estimatedDurationValue != null && quote.estimatedDurationUnit && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Duration</p>
-                <p className="text-sm text-gray-700">{quote.estimatedDurationValue} {quote.estimatedDurationUnit}</p>
-              </div>
-            )}
-            {quote.vendorAvailability && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Availability</p>
-                <p className="text-sm text-gray-700">{quote.vendorAvailability}</p>
-              </div>
-            )}
-            {quote.validUntil && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Valid Until</p>
-                <p className="text-sm text-gray-700">{formatDate(quote.validUntil)}</p>
-              </div>
-            )}
+            {quote.submittedAt && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Submitted</p><p className="text-sm text-gray-700">{formatDate(quote.submittedAt)}</p></div>}
+            {quote.proposedStartDate && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Proposed Start</p><p className="text-sm text-gray-700">{formatDate(quote.proposedStartDate)}</p></div>}
+            {quote.estimatedDurationValue != null && quote.estimatedDurationUnit && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Duration</p><p className="text-sm text-gray-700">{quote.estimatedDurationValue} {quote.estimatedDurationUnit}</p></div>}
+            {quote.vendorAvailability && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Availability</p><p className="text-sm text-gray-700">{quote.vendorAvailability}</p></div>}
+            {quote.validUntil && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Valid Until</p><p className="text-sm text-gray-700">{formatDate(quote.validUntil)}</p></div>}
           </div>
         )}
-
-        {/* Line Items */}
         {hasLineItems && (
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Line Items</p>
             <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500 border-b border-gray-200">
-                  <th className="text-left font-medium pb-1 pr-4">Description</th>
-                  <th className="text-left font-medium pb-1 pr-4">Qty</th>
-                  <th className="text-left font-medium pb-1 pr-4">Unit Price</th>
-                  <th className="text-right font-medium pb-1">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quote.lineItems.map(li => (
-                  <tr key={li.id} className="border-t border-gray-100">
-                    <td className="py-1.5 pr-4 text-gray-700">{li.description}</td>
-                    <td className="py-1.5 pr-4 text-gray-700">{li.quantity}</td>
-                    <td className="py-1.5 pr-4 text-gray-700">{formatCurrency(li.unitPrice)}</td>
-                    <td className="py-1.5 text-right text-gray-900 font-medium">{formatCurrency(li.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
+              <thead><tr className="text-xs text-gray-500 border-b border-gray-200"><th className="text-left font-medium pb-1 pr-4">Description</th><th className="text-left font-medium pb-1 pr-4">Qty</th><th className="text-left font-medium pb-1 pr-4">Unit Price</th><th className="text-right font-medium pb-1">Total</th></tr></thead>
+              <tbody>{quote.lineItems.map(li => (<tr key={li.id} className="border-t border-gray-100"><td className="py-1.5 pr-4 text-gray-700">{li.description}</td><td className="py-1.5 pr-4 text-gray-700">{li.quantity}</td><td className="py-1.5 pr-4 text-gray-700">{formatCurrency(li.unitPrice)}</td><td className="py-1.5 text-right text-gray-900 font-medium">{formatCurrency(li.total)}</td></tr>))}</tbody>
             </table>
           </div>
         )}
-
-        {/* Assumptions / Exclusions */}
         {(quote.assumptions || quote.exclusions) && (
           <div className="grid grid-cols-2 gap-4">
-            {quote.assumptions && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Assumptions</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.assumptions}</p>
-              </div>
-            )}
-            {quote.exclusions && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Exclusions</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.exclusions}</p>
-              </div>
-            )}
+            {quote.assumptions && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Assumptions</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.assumptions}</p></div>}
+            {quote.exclusions && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Exclusions</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.exclusions}</p></div>}
           </div>
         )}
-
-        {/* Attachments */}
         {hasAttachments && (
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Attachments</p>
             <div className="flex flex-wrap gap-2">
               {quote.attachments.map(a => {
                 const url = `${API_BASE}${a.url}`;
-                if (a.mimeType.startsWith('image/')) {
-                  return (
-                    <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}>
-                      <img src={url} alt={a.filename} className="w-24 h-24 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
-                    </a>
-                  );
-                }
-                if (a.mimeType.startsWith('video/')) {
-                  return (
-                    <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}
-                      className="flex flex-col items-center justify-center w-24 h-24 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-gray-500 gap-1">
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                      <span className="text-xs truncate w-full text-center px-1">{a.filename}</span>
-                    </a>
-                  );
-                }
-                return (
-                  <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}
-                    className="flex flex-col items-center justify-center w-24 h-24 rounded-lg border border-gray-200 bg-red-50 hover:bg-red-100 transition-colors text-red-500 gap-1">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
-                    <span className="text-xs truncate w-full text-center px-1">{a.filename}</span>
-                  </a>
-                );
+                if (a.mimeType.startsWith('image/')) return <a key={a.id} href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt={a.filename} className="w-24 h-24 object-cover rounded-lg border border-gray-200 hover:opacity-80" /></a>;
+                return <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-700"><PaperClipIcon className="w-3.5 h-3.5 text-gray-400" /><span className="truncate max-w-[120px]">{a.filename}</span></a>;
               })}
             </div>
           </div>
@@ -176,94 +157,40 @@ function QuoteDetailModal({ quote, open, onClose }: { quote: Quote; open: boolea
   );
 }
 
-function QuoteCard({ quote, isOperator, selectQuote }: {
-  quote: Quote;
-  isOperator: boolean;
-  selectQuote: { mutate: (id: string) => void; isPending: boolean };
-}) {
+// ─── QuoteCard ────────────────────────────────────────────────────────────────
+function QuoteCard({ quote, isOperator, selectQuote }: { quote: Quote; isOperator: boolean; selectQuote: { mutate: (id: string) => void; isPending: boolean } }) {
   const [detailOpen, setDetailOpen] = useState(false);
-
   return (
     <div className="border border-gray-200 rounded-xl bg-white shadow-sm p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-sm font-medium text-gray-900">{quote.vendor?.companyName}</span>
           <StatusBadge status={quote.status} />
-          {quote.attachments?.length > 0 && (
-            <span className="text-xs text-gray-400">{quote.attachments.length} attachment{quote.attachments.length !== 1 ? 's' : ''}</span>
-          )}
+          {quote.attachments?.length > 0 && <span className="text-xs text-gray-400">{quote.attachments.length} attachment{quote.attachments.length !== 1 ? 's' : ''}</span>}
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="text-right">
             <p className="text-sm font-bold text-gray-900">{formatCurrency(quote.price)}</p>
-            {quote.notToExceedPrice != null && (
-              <p className="text-xs text-gray-400">NTE {formatCurrency(quote.notToExceedPrice)}</p>
-            )}
+            {quote.notToExceedPrice != null && <p className="text-xs text-gray-400">NTE {formatCurrency(quote.notToExceedPrice)}</p>}
           </div>
-          {quote.submittedAt && (
-            <p className="text-xs text-gray-400 hidden sm:block">{formatDate(quote.submittedAt)}</p>
-          )}
+          {quote.submittedAt && <p className="text-xs text-gray-400 hidden sm:block">{formatDate(quote.submittedAt)}</p>}
         </div>
       </div>
-
       {isOperator && (
         <div className="mt-3 flex items-center gap-2 justify-end">
-          <Button size="sm" variant="secondary" onClick={() => setDetailOpen(true)}>
-            View
-          </Button>
+          <Button size="sm" variant="secondary" onClick={() => setDetailOpen(true)}>View</Button>
           {quote.publicToken && quote.status === 'Requested' && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/quotes/submit/${quote.publicToken}`);
-                toast.success('Link copied to clipboard');
-              }}
-            >
-              Copy Link
-            </Button>
+            <Button size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/quotes/submit/${quote.publicToken}`); toast.success('Link copied'); }}>Copy Link</Button>
           )}
-          {quote.status === 'Submitted' && (
-            <Button size="sm" onClick={() => selectQuote.mutate(quote.id)} loading={selectQuote.isPending}>
-              Select
-            </Button>
-          )}
+          {quote.status === 'Submitted' && <Button size="sm" onClick={() => selectQuote.mutate(quote.id)} loading={selectQuote.isPending}>Select</Button>}
         </div>
       )}
-
       <QuoteDetailModal quote={quote} open={detailOpen} onClose={() => setDetailOpen(false)} />
     </div>
   );
 }
 
-function QuotesTab({ quotes, isOperator, selectQuote }: {
-  quotes: Quote[];
-  isOperator: boolean;
-  selectQuote: { mutate: (id: string) => void; isPending: boolean };
-}) {
-  return (
-    <div>
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Quotes Received</h2>
-      {quotes.length === 0 ? (
-        <EmptyState title="No quotes yet" description="Quotes will appear here as vendors submit them" />
-      ) : (
-        <div className="space-y-4">
-          {quotes.map(quote => (
-            <QuoteCard key={quote.id} quote={quote} isOperator={isOperator} selectQuote={selectQuote} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const STATUSES: ServiceRequestStatus[] = ['New', 'Sourcing', 'Quoting', 'PendingApproval', 'Approved', 'Rejected', 'Completed'];
-const TABS = ['overview', 'vendors', 'quotes', 'proposal', 'workorder'] as const;
-type Tab = typeof TABS[number];
-
-const commentSchema = z.object({ text: z.string().min(1, 'Comment cannot be empty') });
-type CommentForm = z.infer<typeof commentSchema>;
-
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function RequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -272,19 +199,46 @@ export default function RequestDetailPage() {
   const { user } = useAuthStore();
   const isOperator = user?.role === 'Operator';
 
-  const activeTab = (searchParams.get('tab') as Tab) ?? 'overview';
-  const setTab = (tab: Tab) => setSearchParams({ tab });
+  const tabParam = searchParams.get('tab') as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(tabParam && TABS.includes(tabParam) ? tabParam : 'timeline');
+  useEffect(() => {
+    if (tabParam && TABS.includes(tabParam) && tabParam !== activeTab) setActiveTab(tabParam);
+  }, [tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
+  const switchTab = (tab: Tab) => { setActiveTab(tab); setSearchParams({ tab }); };
 
+  // ── File attachment state (comments) ──
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if (!e.target.files) return; setPendingFiles(p => [...p, ...Array.from(e.target.files!)]); e.target.value = ''; };
+  const removePendingFile = (idx: number) => setPendingFiles(p => p.filter((_, i) => i !== idx));
+
+  // ── PO file state ──
+  const [poFile, setPoFile] = useState<File | null>(null);
+  const poFileRef = useRef<HTMLInputElement>(null);
+
+  // ── Vendor invite modal state ──
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [findVendorsOpen, setFindVendorsOpen] = useState(false);
   const [vendorSearch, setVendorSearch] = useState('');
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+
+  // ── Proposal state ──
   const [proposalEditMode, setProposalEditMode] = useState(false);
   const [selectedQuoteIdForProposal, setSelectedQuoteIdForProposal] = useState<string | null>(null);
 
+  // ── Schedule state ──
+  const [scheduleDate, setScheduleDate] = useState('');
+
+  // ══════════════════════════ QUERIES ══════════════════════════
   const { data: sr, isLoading } = useQuery({
     queryKey: ['service-requests', id],
     queryFn: () => serviceRequestsApi.get(id!).then(r => r.data),
+    enabled: !!id,
+  });
+
+  const { data: allowedTransitions } = useQuery({
+    queryKey: ['service-requests', id, 'transitions'],
+    queryFn: () => serviceRequestsApi.getAllowedTransitions(id!).then(r => r.data),
     enabled: !!id,
   });
 
@@ -297,7 +251,7 @@ export default function RequestDetailPage() {
   const { data: quotes } = useQuery({
     queryKey: ['service-requests', id, 'quotes'],
     queryFn: () => serviceRequestsApi.getQuotes(id!).then(r => r.data),
-    enabled: !!id && (activeTab === 'quotes' || activeTab === 'proposal'),
+    enabled: !!id && (activeTab === 'vendors' || activeTab === 'proposal'),
   });
 
   const { data: proposal } = useQuery({
@@ -306,23 +260,32 @@ export default function RequestDetailPage() {
     enabled: !!id && activeTab === 'proposal',
   });
 
+  const { data: comments } = useQuery({
+    queryKey: ['comments', { serviceRequestId: id }],
+    queryFn: () => commentsApi.list({ serviceRequestId: id! }).then(r => r.data),
+    enabled: !!id && activeTab === 'timeline',
+  });
+
   const { data: vendors } = useQuery({
     queryKey: ['vendors', { search: vendorSearch }],
     queryFn: () => vendorsApi.list({ search: vendorSearch || undefined, pageSize: 50 }).then(r => r.data),
     enabled: inviteModalOpen,
   });
 
-  const { data: comments } = useQuery({
-    queryKey: ['comments', { serviceRequestId: id }],
-    queryFn: () => commentsApi.list({ serviceRequestId: id! }).then(r => r.data),
-    enabled: !!id && activeTab === 'overview',
+  const invoiceStatuses = ['JobCompleted', 'Verification', 'InvoiceSent', 'InvoicePaid', 'Closed'];
+  const { data: invoiceList } = useQuery({
+    queryKey: ['invoices', { clientId: sr?.clientId }],
+    queryFn: () => invoicesApi.list({ clientId: sr?.clientId, page: 1, pageSize: 50 }).then(r => r.data),
+    enabled: !!sr && invoiceStatuses.includes(sr.status) && activeTab === 'invoice',
   });
 
+  // ══════════════════════════ MUTATIONS ══════════════════════════
   const updateStatus = useMutation({
     mutationFn: (status: ServiceRequestStatus) => serviceRequestsApi.updateStatus(id!, status),
     onSuccess: () => {
       toast.success('Status updated');
       queryClient.invalidateQueries({ queryKey: ['service-requests', id] });
+      queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'transitions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: () => toast.error('Failed to update status'),
@@ -330,413 +293,567 @@ export default function RequestDetailPage() {
 
   const createInvites = useMutation({
     mutationFn: (vendorIds: string[]) => serviceRequestsApi.createInvites(id!, vendorIds),
-    onSuccess: () => {
-      toast.success('Vendors invited');
-      setInviteModalOpen(false);
-      setSelectedVendors([]);
-      queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'invites'] });
-    },
+    onSuccess: () => { toast.success('Vendors invited'); setInviteModalOpen(false); setSelectedVendors([]); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'invites'] }); },
     onError: () => toast.error('Failed to invite vendors'),
   });
 
   const selectQuote = useMutation({
     mutationFn: (quoteId: string) => quotesApi.updateStatus(quoteId, 'Selected'),
-    onSuccess: () => {
-      toast.success('Quote selected');
-      queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'quotes'] });
-    },
+    onSuccess: () => { toast.success('Quote selected'); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'quotes'] }); },
     onError: () => toast.error('Failed to select quote'),
   });
 
-  const { register: registerComment, handleSubmit: handleCommentSubmit, reset: resetComment, formState: { errors: commentErrors, isSubmitting: isSubmittingComment } } = useForm<CommentForm>({
-    resolver: zodResolver(commentSchema),
-  });
-
   const createComment = useMutation({
-    mutationFn: (data: CommentForm) => commentsApi.create({ text: data.text, serviceRequestId: id! }),
-    onSuccess: () => {
-      toast.success('Comment added');
-      resetComment();
-      queryClient.invalidateQueries({ queryKey: ['comments', { serviceRequestId: id }] });
-    },
+    mutationFn: (data: CommentForm) => commentsApi.create({ text: data.text, serviceRequestId: id!, files: pendingFiles.length > 0 ? pendingFiles : undefined }),
+    onSuccess: () => { toast.success('Comment added'); resetComment(); setPendingFiles([]); queryClient.invalidateQueries({ queryKey: ['comments', { serviceRequestId: id }] }); },
     onError: () => toast.error('Failed to add comment'),
   });
 
-  // Proposal mutations removed — now handled by ProposalBuilder/ProposalDetail components
+  const updateDetails = useMutation({
+    mutationFn: (data: DetailsForm) => serviceRequestsApi.update(id!, data),
+    onSuccess: () => { toast.success('Details saved'); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); },
+    onError: () => toast.error('Failed to save details'),
+  });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner />
-      </div>
-    );
-  }
+  const uploadPo = useMutation({
+    mutationFn: (data: { poNumber: string; poAmount?: number; file: File }) => serviceRequestsApi.uploadPo(id!, data),
+    onSuccess: () => { toast.success('PO uploaded'); setPoFile(null); resetPo(); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); },
+    onError: () => toast.error('Failed to upload PO'),
+  });
 
-  if (!sr) {
-    return (
-      <EmptyState title="Request not found" action={<Button onClick={() => navigate('/requests')}>Back to Requests</Button>} />
-    );
-  }
+  const saveSchedule = useMutation({
+    mutationFn: (date: string) => serviceRequestsApi.updateSchedule(id!, date),
+    onSuccess: () => { toast.success('Schedule updated'); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); },
+    onError: () => toast.error('Failed to update schedule'),
+  });
+
+  // ── Forms ──
+  const { register: registerComment, handleSubmit: handleCommentSubmit, reset: resetComment, formState: { errors: commentErrors, isSubmitting: isSubmittingComment } } = useForm<CommentForm>({ resolver: zodResolver(commentSchema) });
+  const { register: registerDetails, handleSubmit: handleDetailsSubmit, formState: { isDirty: detailsDirty } } = useForm<DetailsForm>({
+    resolver: zodResolver(detailsSchema),
+    values: sr ? { title: sr.title, description: sr.description, location: sr.location, category: sr.category, priority: sr.priority } : undefined,
+  });
+  const { register: registerPo, handleSubmit: handlePoSubmit, reset: resetPo, formState: { errors: poErrors } } = useForm<PoForm>({ resolver: zodResolver(poSchema) });
+
+  // ══════════════════════════ LOADING / NOT FOUND ══════════════════════════
+  if (isLoading) return <div className="flex items-center justify-center h-64"><LoadingSpinner /></div>;
+  if (!sr) return <EmptyState title="Work order not found" action={<Button onClick={() => navigate('/work-orders')}>Back to Work Orders</Button>} />;
+
+  // ══════════════════════════ DERIVED STATE ══════════════════════════
+  const alerts: { text: string; color: string }[] = [];
+  if (sr.status === 'AwaitingPO') alerts.push({ text: 'Awaiting PO', color: 'bg-red-100 text-red-700' });
+  if (sr.quoteCount === 0 && ['Sourcing', 'PendingQuotes'].includes(sr.status)) alerts.push({ text: 'No Quotes', color: 'bg-yellow-100 text-yellow-700' });
+  if (!sr.hasProposal && ['PendingApproval', 'AwaitingPO'].includes(sr.status)) alerts.push({ text: 'No Proposal', color: 'bg-orange-100 text-orange-700' });
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <button onClick={() => navigate('/requests')} className="text-sm text-gray-500 hover:text-gray-700 mb-3 flex items-center gap-1">
-          ← Back to Requests
-        </button>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{sr.title}</h1>
-            <div className="flex items-center gap-3 mt-2">
-              <StatusBadge status={sr.status} />
-              <PriorityBadge priority={sr.priority} />
-              <span className="text-sm text-gray-500">{sr.client?.companyName}</span>
-              <span className="text-sm text-gray-400">{formatDate(sr.createdAt)}</span>
-            </div>
+      {/* ════════════════════ HEADER ════════════════════ */}
+      <button onClick={() => navigate('/work-orders')} className="text-sm text-gray-500 hover:text-gray-700 mb-3 flex items-center gap-1">&larr; Back to Work Orders</button>
+
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold text-gray-900 truncate">{sr.title}</h1>
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            <span className="text-sm text-gray-500">{sr.client?.companyName}</span>
+            <span className="inline-flex items-center gap-1 text-sm text-gray-500"><MapPinIcon className="w-3.5 h-3.5" />{sr.location}</span>
+            <span className="inline-flex items-center gap-1 text-sm text-gray-500"><TagIcon className="w-3.5 h-3.5" />{sr.category}</span>
+            <PriorityBadge priority={sr.priority} />
+            <StatusBadge status={sr.status} />
+            {isOperator && allowedTransitions && allowedTransitions.length > 0 && (
+              <select
+                value=""
+                onChange={e => { if (e.target.value) updateStatus.mutate(e.target.value as ServiceRequestStatus); }}
+                className="border border-gray-300 rounded-lg text-xs px-2 py-1 focus:ring-brand-500 focus:border-brand-500 bg-white"
+              >
+                <option value="">Move to...</option>
+                {allowedTransitions.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>)}
+              </select>
+            )}
+            {alerts.map(a => <span key={a.text} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${a.color}`}><ExclamationTriangleIcon className="w-3 h-3" />{a.text}</span>)}
           </div>
-          {isOperator && (
-            <select
-              value={sr.status}
-              onChange={e => updateStatus.mutate(e.target.value as ServiceRequestStatus)}
-              className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
-            >
-              {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          )}
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* ════════════════════ TABS ════════════════════ */}
       <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex gap-6">
-          {TABS.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setTab(tab)}
-              className={`py-3 text-sm font-medium border-b-2 capitalize transition-colors ${
-                activeTab === tab
-                  ? 'border-brand-600 text-brand-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {tab === 'workorder' ? 'Work Order' : tab}
-            </button>
-          ))}
+        <nav className="-mb-px flex gap-6 overflow-x-auto">
+          {TABS.map(tab => {
+            const poSchedulingStatuses = ['AwaitingPO', 'POReceived', 'JobInProgress', 'JobCompleted', 'Verification', 'InvoiceSent', 'InvoicePaid', 'Closed'];
+            const invoiceStatuses = ['JobCompleted', 'Verification', 'InvoiceSent', 'InvoicePaid', 'Closed'];
+            const disabled =
+              (tab === 'po-scheduling' && !poSchedulingStatuses.includes(sr.status)) ||
+              (tab === 'invoice' && !invoiceStatuses.includes(sr.status));
+            return (
+              <button
+                key={tab}
+                onClick={() => !disabled && switchTab(tab)}
+                disabled={disabled}
+                className={`whitespace-nowrap py-3 text-sm font-medium border-b-2 transition-colors ${
+                  disabled
+                    ? 'border-transparent text-gray-300 cursor-not-allowed'
+                    : activeTab === tab
+                      ? 'border-brand-600 text-brand-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {TAB_LABELS[tab]}
+              </button>
+            );
+          })}
         </nav>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Details</h2>
-              <dl className="space-y-4">
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{sr.description}</dd>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Location</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{sr.location}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Category</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{sr.category}</dd>
-                  </div>
-                </div>
-              </dl>
-            </div>
+      {/* ════════════════════ 3-COLUMN LAYOUT ════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ──────── MAIN PANEL (col-span-2) ──────── */}
+        <div className="lg:col-span-2 space-y-6">
 
-            {/* Comments */}
+          {/* ─── TIMELINE TAB ─── */}
+          {activeTab === 'timeline' && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Comments</h2>
-              <div className="space-y-4 mb-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">Activity Timeline</h2>
+              <div className="space-y-4 mb-6">
                 {(comments ?? []).length === 0 ? (
-                  <p className="text-sm text-gray-500">No comments yet</p>
+                  <p className="text-sm text-gray-500">No activity yet. Start the conversation below.</p>
                 ) : (
                   comments?.map(c => (
                     <div key={c.id} className="flex gap-3">
                       <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-sm font-medium flex-shrink-0">
                         {c.author?.name?.[0]?.toUpperCase()}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-gray-900">{c.author?.name}</span>
                           <span className="text-xs text-gray-400">{formatRelativeTime(c.createdAt)}</span>
                         </div>
                         <p className="text-sm text-gray-700 mt-0.5">{c.text}</p>
+                        {c.attachments?.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {c.attachments.map(att => {
+                              const isImage = att.mimeType.startsWith('image/');
+                              return isImage ? (
+                                <a key={att.id} href={`${API_BASE}${att.url}`} target="_blank" rel="noopener noreferrer">
+                                  <img src={`${API_BASE}${att.url}`} alt={att.filename} className="h-24 w-auto rounded-lg border border-gray-200 object-cover hover:opacity-90" />
+                                </a>
+                              ) : (
+                                <a key={att.id} href={`${API_BASE}${att.url}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-700">
+                                  <PaperClipIcon className="w-3.5 h-3.5 text-gray-400" /><span className="truncate max-w-[120px]">{att.filename}</span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
                 )}
               </div>
-              <form onSubmit={handleCommentSubmit(data => createComment.mutate(data))} className="flex gap-2">
-                <input
-                  type="text"
-                  {...registerComment('text')}
-                  className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
-                  placeholder="Add a comment..."
-                />
-                <Button type="submit" size="sm" loading={isSubmittingComment}>
-                  Post
-                </Button>
+
+              {/* Comment input */}
+              <form onSubmit={handleCommentSubmit(data => createComment.mutate(data))} className="space-y-2">
+                <div className="flex gap-2">
+                  <input type="text" {...registerComment('text')} className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500" placeholder="Add a comment..." />
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 hover:text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50" title="Attach files"><PaperClipIcon className="w-5 h-5" /></button>
+                  <Button type="submit" size="sm" loading={isSubmittingComment || createComment.isPending}>Post</Button>
+                </div>
+                <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,.pdf" onChange={handleFileSelect} className="hidden" />
+                {commentErrors.text && <p className="text-xs text-red-600">{commentErrors.text.message}</p>}
+                {pendingFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {pendingFiles.map((file, idx) => {
+                      const isImage = file.type.startsWith('image/');
+                      return (
+                        <div key={idx} className="relative group">
+                          {isImage ? <img src={URL.createObjectURL(file)} alt={file.name} className="h-16 w-16 rounded-lg object-cover border border-gray-200" /> : <div className="h-16 w-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center"><PaperClipIcon className="w-5 h-5 text-gray-400" /></div>}
+                          <button type="button" onClick={() => removePendingFile(idx)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><XMarkIcon className="w-3 h-3" /></button>
+                          <span className="text-[10px] text-gray-500 truncate block w-16 mt-0.5">{file.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </form>
-              {commentErrors.text && <p className="mt-1 text-xs text-red-600">{commentErrors.text.message}</p>}
             </div>
+          )}
+
+          {/* ─── DETAILS TAB ─── */}
+          {activeTab === 'details' && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">Job Details</h2>
+              {isOperator ? (
+                <form onSubmit={handleDetailsSubmit(data => updateDetails.mutate(data))} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Title</label>
+                    <input {...registerDetails('title')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Description</label>
+                    <textarea {...registerDetails('description')} rows={4} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Location</label>
+                      <input {...registerDetails('location')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Category</label>
+                      <input {...registerDetails('category')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Priority</label>
+                    <select {...registerDetails('priority')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2">
+                      {['Low', 'Medium', 'High', 'Urgent'].map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit" loading={updateDetails.isPending} disabled={!detailsDirty}>Save Changes</Button>
+                  </div>
+                </form>
+              ) : (
+                <dl className="space-y-4">
+                  <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</dt><dd className="mt-1 text-sm text-gray-900">{sr.description}</dd></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Location</dt><dd className="mt-1 text-sm text-gray-900">{sr.location}</dd></div>
+                    <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Category</dt><dd className="mt-1 text-sm text-gray-900">{sr.category}</dd></div>
+                  </div>
+                  <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</dt><dd className="mt-1"><PriorityBadge priority={sr.priority} /></dd></div>
+                </dl>
+              )}
+            </div>
+          )}
+
+          {/* ─── VENDORS & QUOTES TAB ─── */}
+          {activeTab === 'vendors' && (
+            <div className="space-y-6">
+              {/* Vendor Invites */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold text-gray-900">Vendor Invites</h2>
+                  {isOperator && (
+                    <div className="flex gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => setFindVendorsOpen(true)}>Find Vendors</Button>
+                      <Button size="sm" onClick={() => setInviteModalOpen(true)}>Invite Vendors</Button>
+                    </div>
+                  )}
+                </div>
+                {(invites ?? []).length === 0 ? (
+                  <p className="text-sm text-gray-500">No vendors invited yet.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead><tr className="bg-gray-100 border-b border-gray-300">
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trades</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quote</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Sent</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {invites?.map((inv, idx) => (
+                          <tr key={inv.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                            <td className="px-4 py-2.5 text-sm font-medium text-gray-900">{inv.vendor?.companyName}</td>
+                            <td className="px-4 py-2.5"><div className="flex flex-wrap gap-1">{inv.vendor?.trades.map(t => <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{t}</span>)}</div></td>
+                            <td className="px-4 py-2.5"><StatusBadge status={inv.status} /></td>
+                            <td className="px-4 py-2.5 text-sm text-gray-600">{inv.quote?.price != null ? formatCurrency(inv.quote.price) : '---'}</td>
+                            <td className="px-4 py-2.5 text-sm text-gray-500">{formatDate(inv.sentAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Quotes */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 className="text-base font-semibold text-gray-900 mb-4">Quotes Received</h2>
+                {(quotes ?? []).length === 0 ? (
+                  <p className="text-sm text-gray-500">No quotes yet. Quotes will appear here as vendors submit them.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {quotes!.map(q => <QuoteCard key={q.id} quote={q} isOperator={isOperator} selectQuote={selectQuote} />)}
+                  </div>
+                )}
+              </div>
+
+              {/* Find Vendors Modal */}
+              <FindVendorsModal
+                isOpen={findVendorsOpen}
+                onClose={() => setFindVendorsOpen(false)}
+                serviceRequestZip={sr.location ?? ''}
+                requiredTrade={sr.category ?? ''}
+                onSelectVendor={(vendor: VendorSourcingResult) => { setFindVendorsOpen(false); toast.success(`${vendor.companyName} selected`); }}
+              />
+
+              {/* Invite Modal */}
+              <Modal open={inviteModalOpen} onClose={() => setInviteModalOpen(false)} title="Invite Vendors" size="lg">
+                <div>
+                  <input type="text" placeholder="Search vendors..." value={vendorSearch} onChange={e => setVendorSearch(e.target.value)} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2 mb-4" />
+                  <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
+                    {(vendors?.items ?? []).map(vendor => (
+                      <label key={vendor.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                        <input type="checkbox" checked={selectedVendors.includes(vendor.id)} onChange={e => { if (e.target.checked) setSelectedVendors(p => [...p, vendor.id]); else setSelectedVendors(p => p.filter(v => v !== vendor.id)); }} className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{vendor.companyName}</p>
+                          <div className="flex flex-wrap gap-1 mt-1">{vendor.trades.map(t => <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">{t}</span>)}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button variant="secondary" onClick={() => setInviteModalOpen(false)}>Cancel</Button>
+                    <Button loading={createInvites.isPending} disabled={selectedVendors.length === 0} onClick={() => createInvites.mutate(selectedVendors)}>Invite {selectedVendors.length > 0 ? `(${selectedVendors.length})` : ''}</Button>
+                  </div>
+                </div>
+              </Modal>
+            </div>
+          )}
+
+          {/* ─── PROPOSAL TAB ─── */}
+          {activeTab === 'proposal' && (
+            <div>
+              {(() => {
+                const selectedQuote = selectedQuoteIdForProposal
+                  ? quotes?.find(q => q.id === selectedQuoteIdForProposal)
+                  : proposal?.quoteId ? quotes?.find(q => q.id === proposal.quoteId) : null;
+
+                if (proposalEditMode || (!proposal && selectedQuote)) {
+                  if (!selectedQuote) {
+                    return (
+                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                        <p className="text-sm text-gray-600">No quote selected. Please go back and select a quote first.</p>
+                        <Button variant="secondary" className="mt-3" onClick={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }}>Back</Button>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div>
+                      <button onClick={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }} className="text-sm text-gray-500 hover:text-gray-700 mb-3 flex items-center gap-1">&larr; Back to proposal</button>
+                      <ProposalBuilder serviceRequestId={id!} quote={selectedQuote} existingProposal={proposal} allQuotes={quotes ?? []} onSuccess={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }} />
+                    </div>
+                  );
+                }
+
+                if (proposal) {
+                  return <ProposalDetail proposal={proposal} serviceRequestId={id!} onEdit={() => setProposalEditMode(true)} />;
+                }
+
+                if (isOperator) {
+                  const eligible = quotes?.filter(q => q.status === 'Selected' || q.status === 'Submitted') ?? [];
+                  if (eligible.length === 0) return <EmptyState title="No quotes available" description="Wait for vendors to submit quotes, then select one to create a proposal." />;
+                  return (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                      <p className="text-sm text-gray-600 mb-4">Select a quote to base your proposal on.</p>
+                      <div className="space-y-3">
+                        {eligible.map(q => (
+                          <button key={q.id} onClick={() => setSelectedQuoteIdForProposal(q.id)} className="w-full flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-brand-300 transition-colors text-left">
+                            <div><p className="text-sm font-medium text-gray-900">{q.vendor?.companyName}</p><p className="text-xs text-gray-500">{q.scopeOfWork?.substring(0, 80)}...</p></div>
+                            <div className="text-right"><p className="text-sm font-bold text-gray-900">{formatCurrency(q.price)}</p><StatusBadge status={q.status} /></div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                return <EmptyState title="No proposal created yet" description="The operator will create a proposal for this request" />;
+              })()}
+            </div>
+          )}
+
+          {/* ─── PO & SCHEDULING TAB ─── */}
+          {activeTab === 'po-scheduling' && (
+            <div className="space-y-6">
+              {/* PO Section */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <DocumentTextIcon className="w-5 h-5 text-gray-400" /> Purchase Order
+                </h2>
+                {sr.poNumber ? (
+                  <dl className="space-y-3">
+                    <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">PO Number</dt><dd className="mt-1 text-sm font-medium text-gray-900">{sr.poNumber}</dd></div>
+                    {sr.poAmount != null && <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">PO Amount</dt><dd className="mt-1 text-sm font-medium text-gray-900">{formatCurrency(sr.poAmount)}</dd></div>}
+                    {sr.poFileUrl && (
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">PO File</dt>
+                        <dd className="mt-1"><a href={`${API_BASE}${sr.poFileUrl}`} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-600 hover:text-brand-700 underline">View Document</a></dd>
+                      </div>
+                    )}
+                    {sr.poReceivedAt && <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Received</dt><dd className="mt-1 text-sm text-gray-900">{formatDate(sr.poReceivedAt)}</dd></div>}
+                  </dl>
+                ) : isOperator ? (
+                  <form onSubmit={handlePoSubmit(data => {
+                    if (!poFile) { toast.error('Please attach a PO file'); return; }
+                    uploadPo.mutate({ poNumber: data.poNumber, poAmount: data.poAmount ? parseFloat(data.poAmount) : undefined, file: poFile });
+                  })} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">PO Number</label>
+                      <input {...registerPo('poNumber')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" placeholder="e.g. PO-2026-0042" />
+                      {poErrors.poNumber && <p className="mt-1 text-xs text-red-600">{poErrors.poNumber.message}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">PO Amount (optional)</label>
+                      <input {...registerPo('poAmount')} type="number" step="0.01" className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" placeholder="0.00" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">PO Document</label>
+                      <input ref={poFileRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" onChange={e => setPoFile(e.target.files?.[0] ?? null)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100" />
+                      {poFile && <p className="mt-1 text-xs text-gray-500">Selected: {poFile.name}</p>}
+                    </div>
+                    <Button type="submit" loading={uploadPo.isPending}><ArrowUpTrayIcon className="w-4 h-4 mr-1.5" />Upload PO</Button>
+                  </form>
+                ) : (
+                  <p className="text-sm text-gray-500">No purchase order has been uploaded yet.</p>
+                )}
+              </div>
+
+              {/* Scheduling Section */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <CalendarDaysIcon className="w-5 h-5 text-gray-400" /> Scheduling
+                </h2>
+                {sr.scheduleConfirmedAt && (
+                  <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200">
+                    <p className="text-sm text-green-800 font-medium">Schedule confirmed on {formatDate(sr.scheduleConfirmedAt)}</p>
+                  </div>
+                )}
+                {sr.scheduledDate && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Scheduled Date</p>
+                    <p className="text-sm font-medium text-gray-900">{formatDate(sr.scheduledDate)}</p>
+                  </div>
+                )}
+                {isOperator && (
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">{sr.scheduledDate ? 'Reschedule' : 'Set Scheduled Date'}</label>
+                      <input type="date" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
+                    </div>
+                    <Button onClick={() => { if (!scheduleDate) { toast.error('Pick a date'); return; } saveSchedule.mutate(scheduleDate); }} loading={saveSchedule.isPending} disabled={!scheduleDate}>Save</Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ─── INVOICE TAB ─── */}
+          {activeTab === 'invoice' && (() => {
+            const matchingInvoices = (invoiceList?.items ?? []).filter(inv => inv.location === sr.location);
+            return (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <CurrencyDollarIcon className="w-5 h-5 text-gray-400" /> Invoice
+                </h2>
+                {matchingInvoices.length > 0 ? (
+                  <div className="space-y-3">
+                    {matchingInvoices.map(inv => (
+                      <div key={inv.id} className="flex items-center justify-between p-4 rounded-lg border border-gray-200">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{formatCurrency(inv.amount)}</p>
+                          <p className="text-xs text-gray-500">{inv.clientName} &middot; {inv.location}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <StatusBadge status={inv.status} />
+                          <Button size="sm" variant="secondary" onClick={() => navigate(`/invoices/${inv.id}`)}>View</Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-3">No invoice has been created for this work order yet.</p>
+                    <Button variant="secondary" onClick={() => navigate('/invoices')}>Go to Invoices</Button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* ──────── RIGHT PANEL (sidebar) ──────── */}
+        <div className="space-y-4">
+          {/* Status Card */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Status</h3>
+            <StatusBadge status={sr.status} />
+            <p className="text-sm text-gray-600 mt-1">{STATUS_LABELS[sr.status] ?? sr.status}</p>
           </div>
 
-          <div>
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Summary</h2>
-              <dl className="space-y-3">
-                <div>
-                  <dt className="text-xs text-gray-500">Client</dt>
-                  <dd className="text-sm font-medium text-gray-900">{sr.client?.companyName}</dd>
-                </div>
+          {/* Key Info Card */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Key Info</h3>
+            <dl className="space-y-3">
+              <div className="flex items-start gap-2">
+                <UserGroupIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div><dt className="text-xs text-gray-500">Client</dt><dd className="text-sm font-medium text-gray-900">{sr.client?.companyName}</dd></div>
+              </div>
+              <div className="flex items-start gap-2">
+                <MapPinIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div><dt className="text-xs text-gray-500">Location</dt><dd className="text-sm font-medium text-gray-900">{sr.location}</dd></div>
+              </div>
+              <div className="flex items-start gap-2">
+                <InformationCircleIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <dt className="text-xs text-gray-500">Quotes</dt>
                   <dd className="text-sm font-medium text-gray-900">{sr.quoteCount}</dd>
                 </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <DocumentTextIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <dt className="text-xs text-gray-500">Proposal</dt>
                   <dd className="text-sm font-medium text-gray-900">{sr.hasProposal ? 'Yes' : 'No'}</dd>
                 </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Work Order</dt>
-                  <dd className="text-sm font-medium text-gray-900">{sr.hasWorkOrder ? 'Yes' : 'No'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Created By</dt>
-                  <dd className="text-sm font-medium text-gray-900">{sr.createdBy?.name}</dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'vendors' && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">Vendor Invites</h2>
-            {isOperator && (
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => setFindVendorsOpen(true)}>Find Vendors</Button>
-                <Button onClick={() => setInviteModalOpen(true)}>Invite Vendors</Button>
               </div>
-            )}
+              {sr.poNumber && (
+                <div className="flex items-start gap-2">
+                  <CurrencyDollarIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <dt className="text-xs text-gray-500">PO</dt>
+                    <dd className="text-sm font-medium text-gray-900">{sr.poNumber}{sr.poAmount != null && ` (${formatCurrency(sr.poAmount)})`}</dd>
+                  </div>
+                </div>
+              )}
+            </dl>
           </div>
 
-          {(invites ?? []).length === 0 ? (
-            <EmptyState title="No vendors invited yet" description="Invite vendors to submit quotes for this request" />
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr className="bg-gray-100 border-b border-gray-300">
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trades</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quote Price</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Sent</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {invites?.map((invite, idx) => (
-                    <tr key={invite.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
-                      <td className="px-4 py-2.5 text-sm font-medium text-gray-900">{invite.vendor?.companyName}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex flex-wrap gap-1">
-                          {invite.vendor?.trades.map(t => (
-                            <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{t}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5"><StatusBadge status={invite.status} /></td>
-                      <td className="px-4 py-2.5 text-sm text-gray-600">
-                        {invite.quote?.price != null ? formatCurrency(invite.quote.price) : '—'}
-                      </td>
-                      <td className="px-4 py-2.5 text-sm text-gray-500">{formatDate(invite.sentAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {/* Dates Card */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Dates</h3>
+            <dl className="space-y-2">
+              <div className="flex items-center gap-2">
+                <ClockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div><dt className="text-xs text-gray-500 inline">Created</dt><dd className="text-sm text-gray-900 inline ml-1">{formatDate(sr.createdAt)}</dd></div>
+              </div>
+              <div className="flex items-center gap-2">
+                <ClockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div><dt className="text-xs text-gray-500 inline">Updated</dt><dd className="text-sm text-gray-900 inline ml-1">{formatRelativeTime(sr.updatedAt)}</dd></div>
+              </div>
+              {sr.scheduledDate && (
+                <div className="flex items-center gap-2">
+                  <CalendarDaysIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <div><dt className="text-xs text-gray-500 inline">Scheduled</dt><dd className="text-sm text-gray-900 inline ml-1">{formatDate(sr.scheduledDate)}</dd></div>
+                </div>
+              )}
+            </dl>
+          </div>
 
-          {/* Find Vendors Modal */}
-          <FindVendorsModal
-            isOpen={findVendorsOpen}
-            onClose={() => setFindVendorsOpen(false)}
-            serviceRequestZip={sr.location ?? ''}
-            requiredTrade={sr.category ?? ''}
-            onSelectVendor={(vendor: VendorSourcingResult) => {
-              setFindVendorsOpen(false);
-              toast.success(`${vendor.companyName} selected — invite them via the Invites section below`);
-            }}
-          />
-
-          {/* Invite Modal */}
-          <Modal open={inviteModalOpen} onClose={() => setInviteModalOpen(false)} title="Invite Vendors" size="lg">
-            <div>
-              <input
-                type="text"
-                placeholder="Search vendors by name or trade..."
-                value={vendorSearch}
-                onChange={e => setVendorSearch(e.target.value)}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2 mb-4"
-              />
-              <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
-                {(vendors?.items ?? []).map(vendor => (
-                  <label key={vendor.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedVendors.includes(vendor.id)}
-                      onChange={e => {
-                        if (e.target.checked) setSelectedVendors(prev => [...prev, vendor.id]);
-                        else setSelectedVendors(prev => prev.filter(v => v !== vendor.id));
-                      }}
-                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{vendor.companyName}</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {vendor.trades.map(t => (
-                          <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">{t}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </label>
+          {/* Alerts */}
+          {alerts.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Alerts</h3>
+              <div className="space-y-2">
+                {alerts.map(a => (
+                  <div key={a.text} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${a.color}`}>
+                    <ExclamationTriangleIcon className="w-4 h-4 flex-shrink-0" />
+                    {a.text}
+                  </div>
                 ))}
               </div>
-              <div className="flex justify-end gap-3">
-                <Button variant="secondary" onClick={() => setInviteModalOpen(false)}>Cancel</Button>
-                <Button
-                  loading={createInvites.isPending}
-                  disabled={selectedVendors.length === 0}
-                  onClick={() => createInvites.mutate(selectedVendors)}
-                >
-                  Invite {selectedVendors.length > 0 ? `(${selectedVendors.length})` : ''} Vendors
-                </Button>
-              </div>
             </div>
-          </Modal>
-        </div>
-      )}
-
-      {activeTab === 'quotes' && (
-        <QuotesTab quotes={quotes ?? []} isOperator={isOperator} selectQuote={selectQuote} />
-      )}
-
-      {activeTab === 'proposal' && (
-        <div className="max-w-3xl">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Proposal</h2>
-          {(() => {
-            const selectedQuote = selectedQuoteIdForProposal
-              ? quotes?.find(q => q.id === selectedQuoteIdForProposal)
-              : proposal?.quoteId
-                ? quotes?.find(q => q.id === proposal.quoteId)
-                : null;
-
-            // Editing / creating mode
-            if (proposalEditMode || (!proposal && selectedQuote)) {
-              if (!selectedQuote) {
-                return (
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <p className="text-sm text-gray-600">No quote selected. Please go back and select a quote first.</p>
-                    <Button variant="secondary" className="mt-3" onClick={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }}>
-                      Back
-                    </Button>
-                  </div>
-                );
-              }
-              return (
-                <div>
-                  <button
-                    onClick={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }}
-                    className="text-sm text-gray-500 hover:text-gray-700 mb-3 flex items-center gap-1"
-                  >
-                    &larr; Back to proposal
-                  </button>
-                  <ProposalBuilder
-                    serviceRequestId={id!}
-                    quote={selectedQuote}
-                    existingProposal={proposal}
-                    allQuotes={quotes ?? []}
-                    onSuccess={() => { setProposalEditMode(false); setSelectedQuoteIdForProposal(null); }}
-                  />
-                </div>
-              );
-            }
-
-            // Existing proposal — detail view
-            if (proposal) {
-              return (
-                <ProposalDetail
-                  proposal={proposal}
-                  serviceRequestId={id!}
-                  onEdit={() => setProposalEditMode(true)}
-                />
-              );
-            }
-
-            // No proposal yet — show quote selector
-            if (isOperator) {
-              const eligibleQuotes = quotes?.filter(q => q.status === 'Selected' || q.status === 'Submitted') ?? [];
-              if (eligibleQuotes.length === 0) {
-                return (
-                  <EmptyState
-                    title="No quotes available"
-                    description="Wait for vendors to submit quotes, then select one to create a proposal."
-                  />
-                );
-              }
-              return (
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                  <p className="text-sm text-gray-600 mb-4">Select a quote to base your proposal on.</p>
-                  <div className="space-y-3">
-                    {eligibleQuotes.map(q => (
-                      <button
-                        key={q.id}
-                        onClick={() => setSelectedQuoteIdForProposal(q.id)}
-                        className="w-full flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-brand-300 transition-colors text-left"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{q.vendor?.companyName}</p>
-                          <p className="text-xs text-gray-500">{q.scopeOfWork?.substring(0, 80)}...</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900">{formatCurrency(q.price)}</p>
-                          <StatusBadge status={q.status} />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
-
-            return <EmptyState title="No proposal created yet" description="The operator will create a proposal for this request" />;
-          })()}
-        </div>
-      )}
-
-      {activeTab === 'workorder' && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Work Order</h2>
-          {!sr.hasWorkOrder ? (
-            <EmptyState
-              title="No work order yet"
-              description="A work order is created automatically when a proposal is approved by the client"
-            />
-          ) : (
-            <p className="text-sm text-gray-600">Work order created. View in the Work Orders section for full details.</p>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -54,6 +54,11 @@ public class SendProposalCommandHandler : IRequestHandler<SendProposalCommand, P
 
         proposal.Status = ProposalStatus.Sent;
         proposal.SentAt = DateTime.UtcNow;
+
+        // Move SR to PendingApproval
+        proposal.ServiceRequest.Status = ServiceRequestStatus.PendingApproval;
+        proposal.ServiceRequest.UpdatedAt = DateTime.UtcNow;
+
         await _proposals.SaveChangesAsync();
 
         await _notifications.CreateAsync(

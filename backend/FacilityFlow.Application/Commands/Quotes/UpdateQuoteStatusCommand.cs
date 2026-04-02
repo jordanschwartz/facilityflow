@@ -42,7 +42,7 @@ public class UpdateQuoteStatusCommandHandler : IRequestHandler<UpdateQuoteStatus
 
             // Transition SR to PendingApproval
             var sr = await _serviceRequests.GetByIdAsync(quote.ServiceRequestId);
-            if (sr != null && sr.Status == ServiceRequestStatus.Quoting)
+            if (sr != null && sr.Status == ServiceRequestStatus.PendingQuotes)
             {
                 sr.Status = ServiceRequestStatus.PendingApproval;
                 sr.UpdatedAt = DateTime.UtcNow;

@@ -56,7 +56,7 @@ public class UpdateProposalCommandHandler : IRequestHandler<UpdateProposalComman
         if (req.Summary != null) proposal.Summary = req.Summary;
         if (req.NotToExceedPrice.HasValue) proposal.NotToExceedPrice = req.NotToExceedPrice;
         if (req.UseNtePricing.HasValue) proposal.UseNtePricing = req.UseNtePricing.Value;
-        if (req.ProposedStartDate.HasValue) proposal.ProposedStartDate = req.ProposedStartDate;
+        if (req.ProposedStartDate.HasValue) proposal.ProposedStartDate = DateTime.SpecifyKind(req.ProposedStartDate.Value, DateTimeKind.Utc);
         if (req.EstimatedDuration != null) proposal.EstimatedDuration = req.EstimatedDuration;
         if (req.TermsAndConditions != null) proposal.TermsAndConditions = req.TermsAndConditions;
         if (req.InternalNotes != null) proposal.InternalNotes = req.InternalNotes;

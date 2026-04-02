@@ -38,19 +38,19 @@ export default function RequestNewPage() {
   const createMutation = useMutation({
     mutationFn: (data: FormData) => serviceRequestsApi.create(data),
     onSuccess: (res) => {
-      toast.success('Service request created');
-      navigate(`/requests/${res.data.id}`);
+      toast.success('Work order created');
+      navigate(`/work-orders/${res.data.id}`);
     },
-    onError: () => toast.error('Failed to create request'),
+    onError: () => toast.error('Failed to create work order'),
   });
 
   return (
     <div className="max-w-2xl">
       <PageHeader
-        title="New Service Request"
-        subtitle="Submit a new facility service request"
+        title="New Work Order"
+        subtitle="Create a new work order"
         actions={
-          <Button variant="secondary" onClick={() => navigate('/requests')}>
+          <Button variant="secondary" onClick={() => navigate('/work-orders')}>
             Cancel
           </Button>
         }
@@ -133,7 +133,7 @@ export default function RequestNewPage() {
 
           <div className="pt-2">
             <Button type="submit" loading={createMutation.isPending} size="lg">
-              Create Request
+              Create Work Order
             </Button>
           </div>
         </form>

@@ -1,12 +1,22 @@
 export const statusColors: Record<string, string> = {
-  // ServiceRequest
+  // ServiceRequest / Work Order Lifecycle
   New: 'bg-gray-100 text-gray-700',
+  Qualifying: 'bg-gray-200 text-gray-700',
   Sourcing: 'bg-blue-100 text-blue-700',
-  Quoting: 'bg-yellow-100 text-yellow-700',
+  SchedulingSiteVisit: 'bg-indigo-100 text-indigo-700',
+  ScheduleConfirmed: 'bg-indigo-200 text-indigo-800',
+  PendingQuotes: 'bg-yellow-100 text-yellow-700',
+  ProposalReady: 'bg-violet-100 text-violet-700',
   PendingApproval: 'bg-purple-100 text-purple-700',
-  Approved: 'bg-green-100 text-green-700',
-  Rejected: 'bg-red-100 text-red-700',
-  Completed: 'bg-emerald-100 text-emerald-700',
+  AwaitingPO: 'bg-red-100 text-red-700',
+  POReceived: 'bg-orange-100 text-orange-700',
+  JobInProgress: 'bg-blue-200 text-blue-800',
+  JobCompleted: 'bg-green-100 text-green-700',
+  Verification: 'bg-teal-100 text-teal-700',
+  InvoiceSent: 'bg-amber-100 text-amber-700',
+  InvoicePaid: 'bg-green-200 text-green-800',
+  Closed: 'bg-gray-100 text-gray-500',
+  Cancelled: 'bg-red-100 text-red-700',
   // Quote
   Requested: 'bg-gray-100 text-gray-700',
   Submitted: 'bg-blue-100 text-blue-700',
@@ -17,13 +27,15 @@ export const statusColors: Record<string, string> = {
   Sent: 'bg-blue-100 text-blue-700',
   Viewed: 'bg-indigo-100 text-indigo-700',
   Revised: 'bg-amber-100 text-amber-700',
-  // Invoice
-  Paid: 'bg-green-100 text-green-700',
-  Cancelled: 'bg-red-100 text-red-700',
-  // WorkOrder
+  // WorkOrder (execution sub-status)
   Assigned: 'bg-blue-100 text-blue-700',
   InProgress: 'bg-yellow-100 text-yellow-700',
-  Closed: 'bg-gray-100 text-gray-700',
+  Completed: 'bg-emerald-100 text-emerald-700',
+  // Invoice
+  Paid: 'bg-green-100 text-green-700',
+  // Shared
+  Approved: 'bg-green-100 text-green-700',
+  Rejected: 'bg-red-100 text-red-700',
 };
 
 export const priorityColors: Record<string, string> = {

@@ -80,7 +80,13 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
             result.Quotes.Count,
             result.Proposal != null,
             result.WorkOrder != null,
-            result.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList()
+            result.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList(),
+            result.PoNumber,
+            result.PoAmount,
+            result.PoFileUrl,
+            result.PoReceivedAt,
+            result.ScheduledDate,
+            result.ScheduleConfirmedAt
         );
     }
 }

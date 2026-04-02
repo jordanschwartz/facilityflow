@@ -1,6 +1,6 @@
 export type UserRole = 'Operator' | 'Client' | 'Vendor';
 export type Priority = 'Low' | 'Medium' | 'High' | 'Urgent';
-export type ServiceRequestStatus = 'New' | 'Sourcing' | 'Quoting' | 'PendingApproval' | 'Approved' | 'Rejected' | 'Completed';
+export type ServiceRequestStatus = 'New' | 'Qualifying' | 'Sourcing' | 'SchedulingSiteVisit' | 'ScheduleConfirmed' | 'PendingQuotes' | 'ProposalReady' | 'PendingApproval' | 'AwaitingPO' | 'POReceived' | 'JobInProgress' | 'JobCompleted' | 'Verification' | 'InvoiceSent' | 'InvoicePaid' | 'Closed' | 'Cancelled';
 export type QuoteStatus = 'Requested' | 'Submitted' | 'Reviewed' | 'Selected' | 'Rejected';
 export type ProposalStatus = 'Draft' | 'Sent' | 'Viewed' | 'Approved' | 'Rejected' | 'Revised';
 export type WorkOrderStatus = 'Assigned' | 'InProgress' | 'Completed' | 'Closed';
@@ -35,6 +35,12 @@ export interface ServiceRequestSummary {
 export interface ServiceRequest extends ServiceRequestSummary {
   description: string; location: string; category: string;
   createdById: string; createdBy: AuthUser; attachments: AttachmentDto[];
+  poNumber?: string;
+  poAmount?: number;
+  poFileUrl?: string;
+  poReceivedAt?: string;
+  scheduledDate?: string;
+  scheduleConfirmedAt?: string;
 }
 
 export interface Vendor {
@@ -245,7 +251,12 @@ export interface Notification {
 
 export interface PipelineColumn { count: number; items: ServiceRequestSummary[]; }
 export interface DashboardStats {
-  totalOpenRequests: number; pendingQuotes: number; awaitingApproval: number; completedThisMonth: number;
+  totalOpen: number;
+  awaitingQuotes: number;
+  awaitingPO: number;
+  inProgress: number;
+  completedThisMonth: number;
+  outstandingInvoices: number;
 }
 export interface PipelineResponse {
   columns: Record<string, PipelineColumn>;

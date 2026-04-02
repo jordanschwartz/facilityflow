@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { serviceRequestsApi } from '../../api/serviceRequests';
 import type { ServiceRequestStatus, Priority } from '../../types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -12,7 +12,20 @@ import EmptyState from '../../components/ui/EmptyState';
 import { formatDate } from '../../utils/formatters';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
-const STATUSES: ServiceRequestStatus[] = ['New', 'Sourcing', 'Quoting', 'PendingApproval', 'Approved', 'Rejected', 'Completed'];
+const STATUS_TABS: Array<ServiceRequestStatus | ''> = ['', 'New', 'Qualifying', 'Sourcing', 'PendingQuotes', 'ProposalReady', 'PendingApproval', 'AwaitingPO', 'JobInProgress', 'JobCompleted', 'Closed'];
+const STATUS_LABELS: Record<string, string> = {
+  '': 'All',
+  New: 'New',
+  Qualifying: 'Qualifying',
+  Sourcing: 'Sourcing',
+  PendingQuotes: 'Pending Quotes',
+  ProposalReady: 'Proposal Ready',
+  PendingApproval: 'Pending Approval',
+  AwaitingPO: 'Awaiting PO',
+  JobInProgress: 'In Progress',
+  JobCompleted: 'Completed',
+  Closed: 'Closed',
+};
 const PRIORITIES: Priority[] = ['Low', 'Medium', 'High', 'Urgent'];
 
 export default function RequestListPage() {
@@ -37,14 +50,31 @@ export default function RequestListPage() {
   return (
     <div>
       <PageHeader
-        title="Service Requests"
-        subtitle={`${totalCount} total requests`}
+        title="Work Orders"
+        subtitle={`${totalCount} total work orders`}
         actions={
-          <Button onClick={() => navigate('/requests/new')}>
-            + New Request
+          <Button onClick={() => navigate('/work-orders/new')}>
+            + New Work Order
           </Button>
         }
       />
+
+      {/* Status Tabs */}
+      <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+        {STATUS_TABS.map(tab => (
+          <button
+            key={tab}
+            onClick={() => { setStatus(tab); setPage(1); }}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+              status === tab
+                ? 'bg-brand-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            {STATUS_LABELS[tab] ?? tab}
+          </button>
+        ))}
+      </div>
 
       {/* Filters */}
       <div className="flex gap-3 mb-6">
@@ -58,14 +88,6 @@ export default function RequestListPage() {
             className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-brand-500 focus:border-brand-500"
           />
         </div>
-        <select
-          value={status}
-          onChange={e => { setStatus(e.target.value); setPage(1); }}
-          className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
-        >
-          <option value="">All Statuses</option>
-          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
         <select
           value={priority}
           onChange={e => setPriority(e.target.value)}
@@ -84,9 +106,9 @@ export default function RequestListPage() {
           </div>
         ) : filteredItems.length === 0 ? (
           <EmptyState
-            title="No requests found"
+            title="No work orders found"
             description="Try adjusting your filters or create a new request"
-            action={<Button onClick={() => navigate('/requests/new')}>New Request</Button>}
+            action={<Button onClick={() => navigate('/work-orders/new')}>New Work Order</Button>}
           />
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
@@ -103,7 +125,7 @@ export default function RequestListPage() {
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {filteredItems.map((item, idx) => (
-                <tr key={item.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                <tr key={item.id} onClick={() => navigate(`/work-orders/${item.id}`)} className={`hover:bg-blue-50/50 transition-colors cursor-pointer ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
                   <td className="px-4 py-2.5">
                     <p className="text-sm font-medium text-gray-900">{item.title}</p>
                   </td>
@@ -113,9 +135,7 @@ export default function RequestListPage() {
                   <td className="px-4 py-2.5"><StatusBadge status={item.status} /></td>
                   <td className="px-4 py-2.5 text-sm text-gray-500">{formatDate(item.createdAt)}</td>
                   <td className="px-4 py-2.5 text-right">
-                    <Link to={`/requests/${item.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">
-                      View
-                    </Link>
+                    <span className="text-brand-600 text-sm font-medium">View</span>
                   </td>
                 </tr>
               ))}

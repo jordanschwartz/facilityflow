@@ -20,4 +20,10 @@ public record ServiceRequestDto(
     int QuoteCount,
     bool HasProposal,
     bool HasWorkOrder,
-    List<AttachmentDto> Attachments);
+    List<AttachmentDto> Attachments,
+    string? PoNumber = null,
+    decimal? PoAmount = null,
+    string? PoFileUrl = null,
+    DateTime? PoReceivedAt = null,
+    DateTime? ScheduledDate = null,
+    DateTime? ScheduleConfirmedAt = null);

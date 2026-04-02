@@ -17,8 +17,6 @@ import VendorDetailPage from './pages/vendors/VendorDetailPage';
 import ClientListPage from './pages/clients/ClientListPage';
 import ClientNewPage from './pages/clients/ClientNewPage';
 import ClientDetailPage from './pages/clients/ClientDetailPage';
-import WorkOrderListPage from './pages/workorders/WorkOrderListPage';
-import WorkOrderDetailPage from './pages/workorders/WorkOrderDetailPage';
 import QuoteSubmitPage from './pages/public/QuoteSubmitPage';
 import ProposalViewPage from './pages/public/ProposalViewPage';
 import InvoiceListPage from './pages/invoices/InvoiceListPage';
@@ -57,19 +55,21 @@ export default function App() {
           <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="requests" element={<RequestListPage />} />
-            <Route path="requests/new" element={<RequestNewPage />} />
-            <Route path="requests/:id" element={<RequestDetailPage />} />
+            <Route path="work-orders" element={<RequestListPage />} />
+            <Route path="work-orders/new" element={<RequestNewPage />} />
+            <Route path="work-orders/:id" element={<RequestDetailPage />} />
+            <Route path="invoices" element={<InvoiceListPage />} />
+            <Route path="invoices/:id" element={<InvoiceDetailPage />} />
             <Route path="vendors" element={<VendorListPage />} />
             <Route path="vendors/new" element={<VendorNewPage />} />
             <Route path="vendors/:id" element={<VendorDetailPage />} />
             <Route path="clients" element={<ClientListPage />} />
             <Route path="clients/new" element={<ClientNewPage />} />
             <Route path="clients/:id" element={<ClientDetailPage />} />
-            <Route path="work-orders" element={<WorkOrderListPage />} />
-            <Route path="work-orders/:id" element={<WorkOrderDetailPage />} />
-            <Route path="invoices" element={<InvoiceListPage />} />
-            <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+            {/* Redirects from old routes */}
+            <Route path="requests" element={<Navigate to="/work-orders" replace />} />
+            <Route path="requests/new" element={<Navigate to="/work-orders/new" replace />} />
+            <Route path="requests/:id" element={<Navigate to="/work-orders/:id" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>
