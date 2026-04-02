@@ -1,0 +1,12 @@
+import apiClient from './client';
+import type { Client, PagedResult } from '../types';
+
+export const clientsApi = {
+  list: (params?: { search?: string; page?: number; pageSize?: number }) =>
+    apiClient.get<PagedResult<Client>>('/clients', { params }),
+  get: (id: string) => apiClient.get<Client>(`/clients/${id}`),
+  create: (data: { userId: string; companyName: string; phone: string; address: string }) =>
+    apiClient.post<Client>('/clients', data),
+  update: (id: string, data: { companyName: string; phone: string; address: string }) =>
+    apiClient.put<Client>(`/clients/${id}`, data),
+};
