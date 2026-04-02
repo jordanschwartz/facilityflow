@@ -24,7 +24,7 @@ const editSchema = z.object({
   primaryContactName: z.string().min(2, 'Primary contact name required'),
   email: z.string().email('Valid email required'),
   phone: z.string().optional(),
-  primaryZip: z.string().regex(/^\d{5}$/, 'Must be a 5-digit ZIP code'),
+  primaryZip: z.string().trim().regex(/^\d{5}$/, 'Must be a 5-digit ZIP code'),
   serviceRadiusMiles: z.coerce.number().min(1).max(500),
   isActive: z.boolean(),
 });

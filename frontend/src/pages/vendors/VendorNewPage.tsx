@@ -16,7 +16,7 @@ const schema = z.object({
   primaryContactName: z.string().min(2, 'Primary contact name required'),
   email: z.string().email('Valid email required'),
   phone: z.string().optional(),
-  primaryZip: z.string().regex(/^\d{5}$/, 'Must be a 5-digit ZIP code'),
+  primaryZip: z.string().trim().regex(/^\d{5}$/, 'Must be a 5-digit ZIP code'),
   serviceRadiusMiles: z.coerce.number().min(1, 'Radius must be at least 1 mile').max(500, 'Radius must be at most 500 miles'),
   isActive: z.boolean(),
 });

@@ -104,7 +104,7 @@ public class VendorsController : ControllerBase
             PrimaryContactName = req.PrimaryContactName,
             Email = req.Email,
             Phone = req.Phone,
-            PrimaryZip = req.PrimaryZip,
+            PrimaryZip = req.PrimaryZip.Trim(),
             ServiceRadiusMiles = req.ServiceRadiusMiles,
             Trades = req.Trades,
             ZipCodes = req.ZipCodes,
@@ -134,7 +134,7 @@ public class VendorsController : ControllerBase
         vendor.PrimaryContactName = req.PrimaryContactName;
         vendor.Email = req.Email;
         vendor.Phone = req.Phone;
-        vendor.PrimaryZip = req.PrimaryZip;
+        vendor.PrimaryZip = req.PrimaryZip.Trim();
         vendor.ServiceRadiusMiles = req.ServiceRadiusMiles;
         vendor.Trades = req.Trades;
         vendor.ZipCodes = req.ZipCodes ?? vendor.ZipCodes;
