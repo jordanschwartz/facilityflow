@@ -533,13 +533,13 @@ export default function ProposalBuilder({
           <Button type="button" variant="secondary" onClick={() => setPreviewOpen(true)}>
             Preview
           </Button>
-          {isEditing && existingProposal?.status === 'Draft' && (
+          {isEditing && (
             <Button
               type="button"
               className="bg-green-600 hover:bg-green-700 focus:ring-green-500 text-white ml-auto"
               onClick={handleSendClick}
             >
-              Send to Client
+              {existingProposal?.status === 'Draft' ? 'Send to Client' : 'Update & Resend'}
             </Button>
           )}
         </div>

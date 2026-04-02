@@ -302,7 +302,7 @@ public class ProposalsController : ControllerBase
             ?? throw new NotFoundException("Proposal not found.");
 
         var attachments = proposal.Attachments.Select(pa =>
-            new AttachmentDto(pa.Attachment.Id, pa.Attachment.Url, pa.Attachment.Filename, pa.Attachment.MimeType))
+            new ClientProposalAttachmentDto(pa.Attachment.Id, pa.Attachment.Filename, pa.Attachment.Url))
             .ToList();
 
         var clientDto = new ClientProposalDto(
@@ -316,6 +316,9 @@ public class ProposalsController : ControllerBase
             proposal.EstimatedDuration,
             proposal.TermsAndConditions,
             proposal.Status.ToString(),
+            proposal.SentAt,
+            proposal.ClientResponse,
+            proposal.ClientRespondedAt,
             attachments,
             new ClientProposalServiceRequestDto(
                 proposal.ServiceRequest.Title,
@@ -400,7 +403,11 @@ public class ProposalsController : ControllerBase
         );
 
         var attachments = proposal.Attachments.Select(pa =>
-            new AttachmentDto(pa.Attachment.Id, pa.Attachment.Url, pa.Attachment.Filename, pa.Attachment.MimeType))
+            new ProposalAttachmentDto(
+                pa.Id,
+                pa.ProposalId,
+                pa.AttachmentId,
+                new AttachmentDto(pa.Attachment.Id, pa.Attachment.Url, pa.Attachment.Filename, pa.Attachment.MimeType)))
             .ToList();
 
         var versions = proposal.Versions

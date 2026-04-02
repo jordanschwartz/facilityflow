@@ -28,5 +28,11 @@ public record ProposalDto(
     DateTime? ClientRespondedAt,
     ServiceRequestSummaryDto ServiceRequest,
     QuoteSummaryDto Quote,
-    List<AttachmentDto> Attachments,
+    List<ProposalAttachmentDto> Attachments,
     List<ProposalVersionDto> Versions);
+
+public record ProposalAttachmentDto(
+    int Id,
+    Guid ProposalId,
+    Guid AttachmentId,
+    AttachmentDto Attachment);

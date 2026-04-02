@@ -13,8 +13,16 @@ public record ClientProposalDto(
     string? EstimatedDuration,
     string? TermsAndConditions,
     string Status,
-    List<AttachmentDto> Attachments,
+    DateTime? SentAt,
+    string? ClientResponse,
+    DateTime? ClientRespondedAt,
+    List<ClientProposalAttachmentDto> Attachments,
     ClientProposalServiceRequestDto ServiceRequest);
+
+public record ClientProposalAttachmentDto(
+    Guid Id,
+    string FileName,
+    string FilePath);
 
 public record ClientProposalServiceRequestDto(
     string Title,
