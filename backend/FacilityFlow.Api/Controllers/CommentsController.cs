@@ -1,6 +1,5 @@
 using FacilityFlow.Api.Extensions;
 using FacilityFlow.Application.Commands.Comments;
-using FacilityFlow.Application.DTOs.Comments;
 using FacilityFlow.Application.Queries.Comments;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -31,10 +30,23 @@ public class CommentsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateCommentRequest req)
+    [RequestSizeLimit(104_857_600)]
+    public async Task<IActionResult> Create(
+        [FromForm] string text,
+        [FromForm] Guid? serviceRequestId,
+        [FromForm] Guid? quoteId,
+        [FromForm] Guid? workOrderId,
+        List<IFormFile>? files)
     {
         var userId = User.GetUserId();
-        var result = await _mediator.Send(new CreateCommentCommand(req, userId));
+
+        var attachments = files?.Select(f => new CommentAttachmentInput(
+            f.OpenReadStream(), f.FileName, f.ContentType
+        )).ToList();
+
+        var result = await _mediator.Send(new CreateCommentCommand(
+            text, userId, serviceRequestId, quoteId, workOrderId, attachments));
+
         return CreatedAtAction(nameof(GetComments), result);
     }
 }

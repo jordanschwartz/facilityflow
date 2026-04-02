@@ -1,4 +1,5 @@
 using FacilityFlow.Application.DTOs.Comments;
+using FacilityFlow.Application.DTOs.Common;
 using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Interfaces.Repositories;
@@ -18,7 +19,10 @@ public class GetCommentsQueryHandler : IRequestHandler<GetCommentsQuery, List<Co
 
     public async Task<List<CommentDto>> Handle(GetCommentsQuery request, CancellationToken cancellationToken)
     {
-        var query = _comments.Query().Include(c => c.Author).AsQueryable();
+        var query = _comments.Query()
+            .Include(c => c.Author)
+            .Include(c => c.Attachments)
+            .AsQueryable();
 
         if (request.ServiceRequestId.HasValue)
             query = query.Where(c => c.ServiceRequestId == request.ServiceRequestId.Value);
@@ -37,7 +41,8 @@ public class GetCommentsQueryHandler : IRequestHandler<GetCommentsQuery, List<Co
             c.QuoteId,
             c.WorkOrderId,
             c.CreatedAt,
-            c.Author.Adapt<UserDto>()
+            c.Author.Adapt<UserDto>(),
+            c.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList()
         )).ToList();
     }
 }

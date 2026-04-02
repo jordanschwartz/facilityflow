@@ -1,3 +1,4 @@
+using FacilityFlow.Application.DTOs.Common;
 using FacilityFlow.Core.DTOs.Auth;
 
 namespace FacilityFlow.Application.DTOs.Comments;
@@ -10,4 +11,5 @@ public record CommentDto(
     Guid? QuoteId,
     Guid? WorkOrderId,
     DateTime CreatedAt,
-    UserDto Author);
+    UserDto Author,
+    List<AttachmentDto> Attachments);

@@ -42,4 +42,23 @@ public class WorkOrdersController : ControllerBase
         var result = await _mediator.Send(new UpdateWorkOrderStatusCommand(id, req));
         return Ok(result);
     }
+
+    [HttpPost("{id:guid}/attachments")]
+    [Authorize(Roles = "Operator,Vendor")]
+    [RequestSizeLimit(104_857_600)]
+    public async Task<IActionResult> UploadAttachment(Guid id, IFormFile file)
+    {
+        using var stream = file.OpenReadStream();
+        var result = await _mediator.Send(
+            new UploadWorkOrderAttachmentCommand(id, stream, file.FileName, file.ContentType));
+        return Ok(result);
+    }
+
+    [HttpDelete("{id:guid}/attachments/{attachmentId:guid}")]
+    [Authorize(Roles = "Operator,Vendor")]
+    public async Task<IActionResult> DeleteAttachment(Guid id, Guid attachmentId)
+    {
+        await _mediator.Send(new DeleteWorkOrderAttachmentCommand(id, attachmentId));
+        return NoContent();
+    }
 }

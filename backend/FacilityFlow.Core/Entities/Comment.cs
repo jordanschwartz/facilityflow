@@ -13,4 +13,5 @@ public class Comment
     public ServiceRequest? ServiceRequest { get; set; }
     public Quote? Quote { get; set; }
     public WorkOrder? WorkOrder { get; set; }
+    public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
 }

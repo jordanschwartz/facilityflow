@@ -236,6 +236,7 @@ export interface Comment {
   id: string; text: string; authorId: string;
   serviceRequestId?: string; quoteId?: string; workOrderId?: string;
   createdAt: string; author: AuthUser;
+  attachments: AttachmentDto[];
 }
 
 export interface Notification {

@@ -42,14 +42,16 @@ public class SubmitQuoteByTokenCommandHandler : IRequestHandler<SubmitQuoteByTok
         var req = command.Request;
         quote.Price = req.Price;
         quote.ScopeOfWork = req.ScopeOfWork;
-        quote.ProposedStartDate = req.ProposedStartDate;
+        quote.ProposedStartDate = req.ProposedStartDate.HasValue
+            ? DateTime.SpecifyKind(req.ProposedStartDate.Value, DateTimeKind.Utc) : null;
         quote.EstimatedDurationValue = req.EstimatedDurationValue;
         quote.EstimatedDurationUnit = req.EstimatedDurationUnit;
         quote.NotToExceedPrice = req.NotToExceedPrice;
         quote.Assumptions = req.Assumptions;
         quote.Exclusions = req.Exclusions;
         quote.VendorAvailability = req.VendorAvailability;
-        quote.ValidUntil = req.ValidUntil;
+        quote.ValidUntil = req.ValidUntil.HasValue
+            ? DateTime.SpecifyKind(req.ValidUntil.Value, DateTimeKind.Utc) : null;
         quote.Status = QuoteStatus.Submitted;
         quote.SubmittedAt = DateTime.UtcNow;
 

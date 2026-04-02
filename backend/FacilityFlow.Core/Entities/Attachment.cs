@@ -9,7 +9,9 @@ public class Attachment
     public Guid? ServiceRequestId { get; set; }
     public Guid? QuoteId { get; set; }
     public Guid? WorkOrderId { get; set; }
+    public Guid? CommentId { get; set; }
     public ServiceRequest? ServiceRequest { get; set; }
     public Quote? Quote { get; set; }
     public WorkOrder? WorkOrder { get; set; }
+    public Comment? Comment { get; set; }
 }
