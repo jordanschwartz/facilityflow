@@ -14,6 +14,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   ClockIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/solid';
 
 interface ProposalDetailProps {
@@ -27,6 +28,7 @@ export default function ProposalDetail({ proposal, serviceRequestId, onEdit }: P
   const [previewOpen, setPreviewOpen] = useState(false);
   const [versionsExpanded, setVersionsExpanded] = useState(false);
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const sendProposal = useMutation({
     mutationFn: () => proposalsApi.send(proposal.id),
@@ -47,6 +49,17 @@ export default function ProposalDetail({ proposal, serviceRequestId, onEdit }: P
     if (proposal.publicToken) {
       navigator.clipboard.writeText(`${window.location.origin}/proposals/view/${proposal.publicToken}`);
       toast.success('Link copied to clipboard');
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      await proposalsApi.downloadPdf(proposal.id);
+    } catch {
+      toast.error('Failed to download PDF');
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -88,6 +101,9 @@ export default function ProposalDetail({ proposal, serviceRequestId, onEdit }: P
           <div className="flex items-center gap-2">
             <Button size="sm" variant="secondary" onClick={() => setPreviewOpen(true)}>
               Preview
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleDownloadPdf} loading={downloadingPdf}>
+              <ArrowDownTrayIcon className="w-4 h-4 mr-1" /> PDF
             </Button>
             {isDraft && (
               <>

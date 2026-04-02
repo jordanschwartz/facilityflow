@@ -19,6 +19,7 @@ import {
   ClockIcon,
   PaperClipIcon,
   DocumentTextIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/solid';
 
 const rejectSchema = z.object({
@@ -37,6 +38,7 @@ export default function ProposalViewPage() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const { data: proposal, isLoading, error } = useQuery({
     queryKey: ['proposal-view', token],
@@ -58,6 +60,18 @@ export default function ProposalViewPage() {
     },
     onError: () => toast.error('Failed to submit response. Please try again.'),
   });
+
+  const handleDownloadPdf = async () => {
+    if (!token) return;
+    setDownloadingPdf(true);
+    try {
+      await proposalsApi.downloadPublicPdf(token);
+    } catch {
+      toast.error('Failed to download PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -89,14 +103,19 @@ export default function ProposalViewPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 28" className="w-8 h-5 flex-shrink-0">
-              <rect width="48" height="28" rx="14" fill="#E8511A" />
-              <circle cx="34" cy="14" r="10" fill="white" />
-            </svg>
-            <span className="font-bold text-lg" style={{ color: '#E8511A' }}>On-Call</span>
-            <span className="text-gray-400">|</span>
-            <span className="text-gray-500 text-sm">Service Proposal</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 28" className="w-8 h-5 flex-shrink-0">
+                <rect width="48" height="28" rx="14" fill="#E8511A" />
+                <circle cx="34" cy="14" r="10" fill="white" />
+              </svg>
+              <span className="font-bold text-lg" style={{ color: '#E8511A' }}>On-Call</span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-500 text-sm">Service Proposal</span>
+            </div>
+            <Button size="sm" variant="secondary" onClick={handleDownloadPdf} loading={downloadingPdf}>
+              <ArrowDownTrayIcon className="w-4 h-4 mr-1" /> Download PDF
+            </Button>
           </div>
         </div>
       </div>

@@ -21,6 +21,7 @@ import {
   ChatBubbleBottomCenterTextIcon,
   PhotoIcon,
   ExclamationTriangleIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/solid';
 import { ClockIcon } from '@heroicons/react/24/outline';
 
@@ -65,6 +66,7 @@ export default function ProposalBuilder({
   const [termsExpanded, setTermsExpanded] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const isEditing = !!existingProposal;
   const vendorCost = quote.price;
@@ -188,6 +190,18 @@ export default function ProposalBuilder({
       toast.error('Failed to generate summary');
     } finally {
       setGeneratingSummary(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!existingProposal) return;
+    setDownloadingPdf(true);
+    try {
+      await proposalsApi.downloadPdf(existingProposal.id);
+    } catch {
+      toast.error('Failed to download PDF');
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -533,6 +547,11 @@ export default function ProposalBuilder({
           <Button type="button" variant="secondary" onClick={() => setPreviewOpen(true)}>
             Preview
           </Button>
+          {isEditing && (
+            <Button type="button" variant="secondary" onClick={handleDownloadPdf} loading={downloadingPdf}>
+              <ArrowDownTrayIcon className="w-4 h-4 mr-1" /> Download PDF
+            </Button>
+          )}
           {isEditing && (
             <Button
               type="button"

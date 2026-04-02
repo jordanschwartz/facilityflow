@@ -24,4 +24,32 @@ export const proposalsApi = {
     apiClient.post(`/proposals/${id}/respond`, data),
 
   getVersions: (id: string) => apiClient.get<ProposalVersion[]>(`/proposals/${id}/versions`),
+
+  downloadPdf: async (proposalId: string) => {
+    const response = await apiClient.get(`/proposals/${proposalId}/pdf`, {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Proposal-${proposalId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadPublicPdf: async (token: string) => {
+    const response = await apiClient.get(`/proposals/view/${token}/pdf`, {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'Proposal.pdf');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };

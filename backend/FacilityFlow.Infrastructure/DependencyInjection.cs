@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddHttpClient<IGeocodingService, GeminiGeocodingService>();
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IActivityLogger, ActivityLogger>();
+        services.AddScoped<IProposalPdfService, ProposalPdfService>();
 
         return services;
     }

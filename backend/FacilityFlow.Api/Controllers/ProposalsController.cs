@@ -1,9 +1,12 @@
 using FacilityFlow.Application.Commands.Proposals;
 using FacilityFlow.Application.DTOs.Proposals;
 using FacilityFlow.Application.Queries.Proposals;
+using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FacilityFlow.Api.Controllers;
 
@@ -12,8 +15,15 @@ namespace FacilityFlow.Api.Controllers;
 public class ProposalsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IProposalPdfService _pdfService;
+    private readonly IProposalRepository _proposals;
 
-    public ProposalsController(IMediator mediator) => _mediator = mediator;
+    public ProposalsController(IMediator mediator, IProposalPdfService pdfService, IProposalRepository proposals)
+    {
+        _mediator = mediator;
+        _pdfService = pdfService;
+        _proposals = proposals;
+    }
 
     [HttpPost("api/service-requests/{serviceRequestId:guid}/proposals")]
     [Authorize(Roles = "Operator")]
@@ -85,5 +95,24 @@ public class ProposalsController : ControllerBase
     {
         var result = await _mediator.Send(new GetProposalVersionsQuery(id));
         return Ok(result);
+    }
+
+    [HttpGet("api/proposals/{id:guid}/pdf")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> GeneratePdf(Guid id)
+    {
+        var pdf = await _pdfService.GenerateAsync(id);
+        return File(pdf, "application/pdf", $"Proposal-{id:N}.pdf");
+    }
+
+    [HttpGet("api/proposals/view/{token}/pdf")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GeneratePublicPdf(string token)
+    {
+        var proposal = await _proposals.Query()
+            .FirstOrDefaultAsync(p => p.PublicToken == token);
+        if (proposal == null) return NotFound();
+        var pdf = await _pdfService.GenerateAsync(proposal.Id);
+        return File(pdf, "application/pdf", "Proposal.pdf");
     }
 }
