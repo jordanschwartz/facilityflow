@@ -20,9 +20,20 @@ public class ProposalPdfService : IProposalPdfService
     private const string GrayTextHex = "#6B7280";
     private const string LightBgHex = "#FFF3EE";
 
+    private static byte[]? _logoBytes;
+
     public ProposalPdfService(IProposalRepository proposals)
     {
         _proposals = proposals;
+        LoadLogo();
+    }
+
+    private static void LoadLogo()
+    {
+        if (_logoBytes != null) return;
+        var logoPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "logo-full.png");
+        if (File.Exists(logoPath))
+            _logoBytes = File.ReadAllBytes(logoPath);
     }
 
     public async Task<byte[]> GenerateAsync(Guid proposalId)
@@ -65,15 +76,17 @@ public class ProposalPdfService : IProposalPdfService
             {
                 row.RelativeItem().Column(left =>
                 {
-                    // Logo: orange square with "OC" text
-                    left.Item().Width(48).Height(48).Background(PrimaryHex)
-                        .AlignCenter().AlignMiddle()
-                        .Text("OC").Bold().FontSize(20).FontColor(Colors.White);
-
-                    left.Item().PaddingTop(6).Text("On-Call")
-                        .Bold().FontSize(22).FontColor(PrimaryHex);
-                    left.Item().Text("Facilities & Maintenance")
-                        .FontSize(10).FontColor(GrayTextHex);
+                    if (_logoBytes != null)
+                    {
+                        left.Item().Width(200).Image(_logoBytes);
+                    }
+                    else
+                    {
+                        left.Item().Text("On-Call")
+                            .Bold().FontSize(22).FontColor(PrimaryHex);
+                        left.Item().Text("Facilities & Maintenance")
+                            .FontSize(10).FontColor(GrayTextHex);
+                    }
                 });
 
                 row.RelativeItem().AlignRight().Column(right =>
