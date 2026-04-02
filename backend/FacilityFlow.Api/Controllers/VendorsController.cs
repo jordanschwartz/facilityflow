@@ -137,10 +137,8 @@ public class VendorsController : ControllerBase
         vendor.PrimaryZip = req.PrimaryZip;
         vendor.ServiceRadiusMiles = req.ServiceRadiusMiles;
         vendor.Trades = req.Trades;
-        vendor.ZipCodes = req.ZipCodes;
+        vendor.ZipCodes = req.ZipCodes ?? vendor.ZipCodes;
         vendor.IsActive = req.IsActive;
-        vendor.IsDnu = req.IsDnu;
-        vendor.DnuReason = req.DnuReason;
 
         await _db.SaveChangesAsync();
         return Ok(ToDto(vendor));

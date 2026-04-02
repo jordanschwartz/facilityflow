@@ -8,7 +8,7 @@ public record UpdateVendorRequest(
     string PrimaryZip,
     int ServiceRadiusMiles,
     List<string> Trades,
-    List<string> ZipCodes,
+    List<string>? ZipCodes,
     bool IsActive,
     bool IsDnu,
     string? DnuReason);
