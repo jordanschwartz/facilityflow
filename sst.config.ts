@@ -106,7 +106,6 @@ export default $config({
         ASPNETCORE_URLS: "http://+:8080",
         ASPNETCORE_ENVIRONMENT: "Production",
         App__SeedDatabase: "false",
-        App__ResetDatabase: "true",
       },
       cpu: "0.25 vCPU",
       memory: "0.5 GB",
