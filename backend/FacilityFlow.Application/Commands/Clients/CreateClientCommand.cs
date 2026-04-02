@@ -1,8 +1,9 @@
 using FacilityFlow.Application.DTOs.Clients;
 using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
-using FacilityFlow.Core.Exceptions;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using Mapster;
 using MediatR;
 
@@ -13,25 +14,27 @@ public record CreateClientCommand(CreateClientRequest Request) : IRequest<Client
 public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, ClientDto>
 {
     private readonly IRepository<Client> _clients;
-    private readonly IRepository<User> _users;
+    private readonly IAuthService _authService;
 
-    public CreateClientCommandHandler(IRepository<Client> clients, IRepository<User> users)
+    public CreateClientCommandHandler(IRepository<Client> clients, IAuthService authService)
     {
         _clients = clients;
-        _users = users;
+        _authService = authService;
     }
 
     public async Task<ClientDto> Handle(CreateClientCommand command, CancellationToken cancellationToken)
     {
         var req = command.Request;
 
-        var user = await _users.GetByIdAsync(req.UserId)
-            ?? throw new NotFoundException("User not found.");
+        // Auto-create user account with a generated password
+        var password = $"Client{Guid.NewGuid():N}"[..16];
+        var authResult = await _authService.RegisterAsync(
+            new RegisterRequest(req.Email, password, req.ContactName, UserRole.Client));
 
         var client = new Client
         {
             Id = Guid.NewGuid(),
-            UserId = req.UserId,
+            UserId = authResult.User.Id,
             CompanyName = req.CompanyName,
             Phone = req.Phone,
             Address = req.Address
@@ -40,6 +43,6 @@ public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, C
         _clients.Add(client);
         await _clients.SaveChangesAsync();
 
-        return new ClientDto(client.Id, client.UserId, client.CompanyName, client.Phone, client.Address, user.Adapt<UserDto>());
+        return new ClientDto(client.Id, client.UserId, client.CompanyName, client.Phone, client.Address, authResult.User.Adapt<UserDto>());
     }
 }

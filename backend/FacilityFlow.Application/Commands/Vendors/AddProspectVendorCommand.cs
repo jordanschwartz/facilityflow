@@ -3,6 +3,7 @@ using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,8 +15,13 @@ public record AddProspectVendorCommand(AddProspectVendorRequest Request) : IRequ
 public class AddProspectVendorCommandHandler : IRequestHandler<AddProspectVendorCommand, VendorDto>
 {
     private readonly IRepository<Vendor> _repo;
+    private readonly IGeocodingService _geocodingService;
 
-    public AddProspectVendorCommandHandler(IRepository<Vendor> repo) => _repo = repo;
+    public AddProspectVendorCommandHandler(IRepository<Vendor> repo, IGeocodingService geocodingService)
+    {
+        _repo = repo;
+        _geocodingService = geocodingService;
+    }
 
     public async Task<VendorDto> Handle(AddProspectVendorCommand request, CancellationToken cancellationToken)
     {
@@ -45,6 +51,13 @@ public class AddProspectVendorCommandHandler : IRequestHandler<AddProspectVendor
             GoogleProfileUrl = req.GoogleProfileUrl
         };
 
+        var coords = await _geocodingService.GeocodeZipAsync(vendor.PrimaryZip);
+        if (coords.HasValue)
+        {
+            vendor.Latitude = coords.Value.Latitude;
+            vendor.Longitude = coords.Value.Longitude;
+        }
+
         _repo.Add(vendor);
         await _repo.SaveChangesAsync();
 
@@ -70,5 +83,7 @@ public class AddProspectVendorCommandHandler : IRequestHandler<AddProspectVendor
         v.Website,
         v.ReviewCount,
         v.GoogleProfileUrl,
+        v.Latitude,
+        v.Longitude,
         v.User?.Adapt<UserDto>());
 }

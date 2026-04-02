@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { invoicesApi } from '../../api/invoices';
 import type { InvoiceStatus, BillableWorkOrder } from '../../types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -23,6 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
 type TopTab = 'invoices' | 'ready';
 
 export default function InvoiceListPage() {
+  const navigate = useNavigate();
   const [topTab, setTopTab] = useState<TopTab>('invoices');
   const [status, setStatus] = useState<InvoiceStatus | ''>('');
   const [page, setPage] = useState(1);
@@ -120,7 +121,7 @@ export default function InvoiceListPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {invoiceItems.map((inv, idx) => (
-                    <tr key={inv.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                    <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)} className={`hover:bg-blue-50/50 transition-colors cursor-pointer ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
                       <td className="px-4 py-2.5 text-sm font-medium text-gray-900">{inv.clientName}</td>
                       <td className="px-4 py-2.5 text-sm text-gray-700">{inv.location}</td>
                       <td className="px-4 py-2.5 text-sm text-gray-600">{inv.completedAt ? formatDate(inv.completedAt) : '—'}</td>
@@ -130,7 +131,7 @@ export default function InvoiceListPage() {
                       <td className="px-4 py-2.5 text-sm text-gray-600">{inv.paidAt ? formatDate(inv.paidAt) : '—'}</td>
                       <td className="px-4 py-2.5 text-sm text-gray-600">{inv.billToEmail}</td>
                       <td className="px-4 py-2.5 text-right">
-                        <Link to={`/invoices/${inv.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">View</Link>
+                        <span className="text-brand-600 text-sm font-medium">View</span>
                       </td>
                     </tr>
                   ))}

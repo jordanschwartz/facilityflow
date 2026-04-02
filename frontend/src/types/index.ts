@@ -106,6 +106,7 @@ export interface VendorSourcingResult {
   dnuReason?: string;
   completedJobCount: number;
   lastUsedDate?: string;
+  distanceMiles?: number;
 }
 
 export interface Client {

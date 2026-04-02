@@ -44,6 +44,7 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
 
         var existingVendorIds = sr.VendorInvites.Select(vi => vi.VendorId).ToHashSet();
         var created = new List<VendorInvite>();
+        var createdQuotes = new Dictionary<Guid, Quote>();
         var skipped = new List<Guid>();
 
         foreach (var vendorId in command.Request.VendorIds)
@@ -84,6 +85,7 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
             _vendorInvites.Add(invite);
             _quotes.Add(quote);
             created.Add(invite);
+            createdQuotes[vendorId] = quote;
 
             if (vendor.UserId.HasValue)
                 await _notifications.CreateAsync(vendor.UserId.Value, "VendorInvite.Received",
@@ -102,9 +104,11 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
         foreach (var inv in created)
         {
             var vendor = await _vendors.GetByIdAsync(inv.VendorId);
+            var quoteToken = createdQuotes.TryGetValue(inv.VendorId, out var q) ? q.PublicToken : null;
+            var quoteLink = quoteToken != null ? $" — Quote link: /quotes/submit/{quoteToken}" : "";
             await _activityLogger.LogAsync(
                 command.ServiceRequestId, null,
-                $"Sent quote request to {vendor?.CompanyName ?? "vendor"}",
+                $"Sent quote request to {vendor?.CompanyName ?? "vendor"}{quoteLink}",
                 ActivityLogCategory.Communication, string.Empty, null);
         }
 

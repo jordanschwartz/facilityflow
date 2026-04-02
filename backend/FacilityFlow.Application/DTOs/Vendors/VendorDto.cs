@@ -21,4 +21,6 @@ public record VendorDto(
     string? Website,
     int? ReviewCount,
     string? GoogleProfileUrl,
+    double? Latitude,
+    double? Longitude,
     UserDto? User);

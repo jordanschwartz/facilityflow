@@ -73,5 +73,7 @@ public class GetVendorsQueryHandler : IRequestHandler<GetVendorsQuery, PagedResu
         v.Website,
         v.ReviewCount,
         v.GoogleProfileUrl,
+        v.Latitude,
+        v.Longitude,
         v.User?.Adapt<UserDto>());
 }

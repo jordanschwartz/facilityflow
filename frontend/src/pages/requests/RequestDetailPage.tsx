@@ -6,14 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { serviceRequestsApi } from '../../api/serviceRequests';
-import { vendorsApi } from '../../api/vendors';
 import { quotesApi } from '../../api/quotes';
 import { proposalsApi } from '../../api/proposals';
 import { invoicesApi } from '../../api/invoices';
 import FindVendorsModal from '../../components/vendors/FindVendorsModal';
 import ProposalBuilder from '../../components/proposals/ProposalBuilder';
 import ProposalDetail from '../../components/proposals/ProposalDetail';
-import type { ServiceRequestStatus, Quote, VendorSourcingResult } from '../../types';
+import type { ServiceRequestStatus, Quote } from '../../types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityBadge from '../../components/ui/PriorityBadge';
@@ -207,11 +206,8 @@ export default function RequestDetailPage() {
   const [poFile, setPoFile] = useState<File | null>(null);
   const poFileRef = useRef<HTMLInputElement>(null);
 
-  // ── Vendor invite modal state ──
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  // ── Find vendors modal state ──
   const [findVendorsOpen, setFindVendorsOpen] = useState(false);
-  const [vendorSearch, setVendorSearch] = useState('');
-  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
 
   // ── Proposal state ──
   const [proposalEditMode, setProposalEditMode] = useState(false);
@@ -251,11 +247,6 @@ export default function RequestDetailPage() {
     enabled: !!id && activeTab === 'proposal',
   });
 
-  const { data: vendors } = useQuery({
-    queryKey: ['vendors', { search: vendorSearch }],
-    queryFn: () => vendorsApi.list({ search: vendorSearch || undefined, pageSize: 50 }).then(r => r.data),
-    enabled: inviteModalOpen,
-  });
 
   const invoiceStatuses = ['JobCompleted', 'Verification', 'InvoiceSent', 'InvoicePaid', 'Closed'];
   const { data: invoiceList } = useQuery({
@@ -275,12 +266,6 @@ export default function RequestDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     },
     onError: () => toast.error('Failed to update status'),
-  });
-
-  const createInvites = useMutation({
-    mutationFn: (vendorIds: string[]) => serviceRequestsApi.createInvites(id!, vendorIds),
-    onSuccess: () => { toast.success('Vendors invited'); setInviteModalOpen(false); setSelectedVendors([]); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'invites'] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
-    onError: () => toast.error('Failed to invite vendors'),
   });
 
   const selectQuote = useMutation({
@@ -447,10 +432,7 @@ export default function RequestDetailPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-base font-semibold text-gray-900">Vendor Invites</h2>
                   {isOperator && (
-                    <div className="flex gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => setFindVendorsOpen(true)}>Find Vendors</Button>
-                      <Button size="sm" onClick={() => setInviteModalOpen(true)}>Invite Vendors</Button>
-                    </div>
+                    <Button size="sm" onClick={() => setFindVendorsOpen(true)}>Find Vendor</Button>
                   )}
                 </div>
                 {(invites ?? []).length === 0 ? (
@@ -484,13 +466,16 @@ export default function RequestDetailPage() {
               {/* Quotes */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <h2 className="text-base font-semibold text-gray-900 mb-4">Quotes Received</h2>
-                {(quotes ?? []).length === 0 ? (
-                  <p className="text-sm text-gray-500">No quotes yet. Quotes will appear here as vendors submit them.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {quotes!.map(q => <QuoteCard key={q.id} quote={q} isOperator={isOperator} selectQuote={selectQuote} />)}
-                  </div>
-                )}
+                {(() => {
+                  const receivedQuotes = (quotes ?? []).filter(q => q.status !== 'Requested');
+                  return receivedQuotes.length === 0 ? (
+                    <p className="text-sm text-gray-500">No quotes yet. Quotes will appear here as vendors submit them.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {receivedQuotes.map(q => <QuoteCard key={q.id} quote={q} isOperator={isOperator} selectQuote={selectQuote} />)}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Find Vendors Modal */}
@@ -499,30 +484,8 @@ export default function RequestDetailPage() {
                 onClose={() => setFindVendorsOpen(false)}
                 serviceRequestZip={sr.location ?? ''}
                 requiredTrade={sr.category ?? ''}
-                onSelectVendor={(vendor: VendorSourcingResult) => { setFindVendorsOpen(false); toast.success(`${vendor.companyName} selected`); }}
+                serviceRequestId={id}
               />
-
-              {/* Invite Modal */}
-              <Modal open={inviteModalOpen} onClose={() => setInviteModalOpen(false)} title="Invite Vendors" size="lg">
-                <div>
-                  <input type="text" placeholder="Search vendors..." value={vendorSearch} onChange={e => setVendorSearch(e.target.value)} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2 mb-4" />
-                  <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
-                    {(vendors?.items ?? []).map(vendor => (
-                      <label key={vendor.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                        <input type="checkbox" checked={selectedVendors.includes(vendor.id)} onChange={e => { if (e.target.checked) setSelectedVendors(p => [...p, vendor.id]); else setSelectedVendors(p => p.filter(v => v !== vendor.id)); }} className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{vendor.companyName}</p>
-                          <div className="flex flex-wrap gap-1 mt-1">{vendor.trades.map(t => <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">{t}</span>)}</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  <div className="flex justify-end gap-3">
-                    <Button variant="secondary" onClick={() => setInviteModalOpen(false)}>Cancel</Button>
-                    <Button loading={createInvites.isPending} disabled={selectedVendors.length === 0} onClick={() => createInvites.mutate(selectedVendors)}>Invite {selectedVendors.length > 0 ? `(${selectedVendors.length})` : ''}</Button>
-                  </div>
-                </div>
-              </Modal>
             </div>
           )}
 
@@ -692,7 +655,6 @@ export default function RequestDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Status</h3>
             <StatusBadge status={sr.status} />
-            <p className="text-sm text-gray-600 mt-1">{STATUS_LABELS[sr.status] ?? sr.status}</p>
           </div>
 
           {/* Key Info Card */}

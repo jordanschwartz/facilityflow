@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { vendorsApi } from '../../api/vendors';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import PageHeader from '../../components/ui/PageHeader';
@@ -139,7 +139,7 @@ export default function VendorListPage() {
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {items.map((vendor, idx) => (
-                <tr key={vendor.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''} ${!vendor.isActive ? 'opacity-70' : ''}`}>
+                <tr key={vendor.id} onClick={() => navigate(`/vendors/${vendor.id}`)} className={`hover:bg-blue-50/50 transition-colors cursor-pointer ${idx % 2 === 1 ? 'bg-gray-50/50' : ''} ${!vendor.isActive ? 'opacity-70' : ''}`}>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium text-gray-900">{vendor.companyName}</p>
@@ -179,9 +179,7 @@ export default function VendorListPage() {
                   </td>
                   <td className="px-4 py-2.5">{renderStars(vendor.rating)}</td>
                   <td className="px-4 py-2.5 text-right">
-                    <Link to={`/vendors/${vendor.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">
-                      View
-                    </Link>
+                    <span className="text-brand-600 text-sm font-medium">View</span>
                   </td>
                 </tr>
               ))}

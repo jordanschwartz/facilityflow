@@ -8,7 +8,7 @@ import { activityLogsApi } from '../api/activityLogs';
 import { commentsApi } from '../api/comments';
 import type { ActivityLog, ActivityLogCategory, Comment } from '../types';
 import Button from './ui/Button';
-import { formatRelativeTime } from '../utils/formatters';
+import { formatDateTime } from '../utils/formatters';
 import { PaperClipIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import {
   ArrowPathIcon,
@@ -74,6 +74,22 @@ interface TimelineEntry {
   createdAt: string;
   comment?: Comment;
   isHighlighted?: boolean;
+}
+
+function renderAction(action: string): React.ReactNode {
+  const linkMatch = action.match(/^(.*?) — Quote link: (\/quotes\/submit\/\S+)$/);
+  if (linkMatch) {
+    return (
+      <>
+        {linkMatch[1]}
+        {' — '}
+        <a href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 underline">
+          Quote link
+        </a>
+      </>
+    );
+  }
+  return action;
 }
 
 function getInitials(name: string): string {
@@ -337,9 +353,9 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                             <IconComponent className="w-3 h-3" />
                             {CATEGORY_LABELS[entry.category]}
                           </span>
-                          <span className="text-xs text-gray-400">{formatRelativeTime(entry.createdAt)}</span>
+                          <span className="text-xs text-gray-400">{formatDateTime(entry.createdAt)}</span>
                         </div>
-                        <p className="text-sm text-gray-700 mt-0.5">{entry.action}</p>
+                        <p className="text-sm text-gray-700 mt-0.5">{renderAction(entry.action)}</p>
 
                         {/* Comment attachments */}
                         {entry.comment?.attachments && entry.comment.attachments.length > 0 && (

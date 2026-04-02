@@ -46,5 +46,7 @@ public class GetVendorByIdQueryHandler : IRequestHandler<GetVendorByIdQuery, Ven
         v.Website,
         v.ReviewCount,
         v.GoogleProfileUrl,
+        v.Latitude,
+        v.Longitude,
         v.User?.Adapt<UserDto>());
 }

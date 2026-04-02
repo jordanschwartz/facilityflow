@@ -1,5 +1,5 @@
 export const formatDate = (date: string) =>
-  new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date));
+  new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(date));
 
 export const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -13,3 +13,9 @@ export const formatRelativeTime = (date: string) => {
   if (days < 7) return `${days}d ago`;
   return formatDate(date);
 };
+
+export const formatDateTime = (date: string) =>
+  new Intl.DateTimeFormat('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZone: 'UTC',
+  }).format(new Date(date));

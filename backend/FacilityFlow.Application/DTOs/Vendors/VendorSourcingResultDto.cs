@@ -11,4 +11,5 @@ public record VendorSourcingResultDto(
     bool IsDnu,
     string? DnuReason,
     int CompletedJobCount,
-    DateTime? LastUsedDate);
+    DateTime? LastUsedDate,
+    double? DistanceMiles);

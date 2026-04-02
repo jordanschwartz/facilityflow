@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IFileStorageService, FileStorageService>();
         services.AddHttpClient<IAiSummaryService, AiSummaryService>();
         services.AddHttpClient<IVendorDiscoveryService, GeminiVendorDiscoveryService>();
+        services.AddHttpClient<IGeocodingService, GeminiGeocodingService>();
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IActivityLogger, ActivityLogger>();
 

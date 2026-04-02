@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { clientsApi } from '../../api/clients';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import PageHeader from '../../components/ui/PageHeader';
@@ -65,7 +65,7 @@ export default function ClientListPage() {
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {items.map((client, idx) => (
-                <tr key={client.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                <tr key={client.id} onClick={() => navigate(`/clients/${client.id}`)} className={`hover:bg-blue-50/50 transition-colors cursor-pointer ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
                   <td className="px-4 py-2.5">
                     <p className="text-sm font-medium text-gray-900">{client.companyName}</p>
                     <p className="text-xs text-gray-500">{client.user?.email}</p>
@@ -73,7 +73,7 @@ export default function ClientListPage() {
                   <td className="px-4 py-2.5 text-sm text-gray-600">{client.phone}</td>
                   <td className="px-4 py-2.5 text-sm text-gray-600">{client.address}</td>
                   <td className="px-4 py-2.5 text-right">
-                    <Link to={`/clients/${client.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">View</Link>
+                    <span className="text-brand-600 text-sm font-medium">View</span>
                   </td>
                 </tr>
               ))}

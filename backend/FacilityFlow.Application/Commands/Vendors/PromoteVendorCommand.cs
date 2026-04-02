@@ -50,5 +50,7 @@ public class PromoteVendorCommandHandler : IRequestHandler<PromoteVendorCommand,
         v.Website,
         v.ReviewCount,
         v.GoogleProfileUrl,
+        v.Latitude,
+        v.Longitude,
         v.User?.Adapt<UserDto>());
 }

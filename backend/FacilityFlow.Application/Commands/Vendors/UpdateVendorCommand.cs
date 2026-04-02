@@ -3,6 +3,7 @@ using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,8 +15,13 @@ public record UpdateVendorCommand(Guid Id, UpdateVendorRequest Request) : IReque
 public class UpdateVendorCommandHandler : IRequestHandler<UpdateVendorCommand, VendorDto>
 {
     private readonly IRepository<Vendor> _repo;
+    private readonly IGeocodingService _geocodingService;
 
-    public UpdateVendorCommandHandler(IRepository<Vendor> repo) => _repo = repo;
+    public UpdateVendorCommandHandler(IRepository<Vendor> repo, IGeocodingService geocodingService)
+    {
+        _repo = repo;
+        _geocodingService = geocodingService;
+    }
 
     public async Task<VendorDto> Handle(UpdateVendorCommand request, CancellationToken cancellationToken)
     {
@@ -25,6 +31,8 @@ public class UpdateVendorCommandHandler : IRequestHandler<UpdateVendorCommand, V
             ?? throw new NotFoundException("Vendor not found.");
 
         var req = request.Request;
+        var previousZip = vendor.PrimaryZip;
+
         vendor.CompanyName = req.CompanyName;
         vendor.PrimaryContactName = req.PrimaryContactName;
         vendor.Email = req.Email;
@@ -34,6 +42,16 @@ public class UpdateVendorCommandHandler : IRequestHandler<UpdateVendorCommand, V
         vendor.Trades = req.Trades ?? vendor.Trades;
         vendor.ZipCodes = req.ZipCodes ?? vendor.ZipCodes;
         vendor.IsActive = req.IsActive;
+
+        if (vendor.PrimaryZip != previousZip)
+        {
+            var coords = await _geocodingService.GeocodeZipAsync(vendor.PrimaryZip);
+            if (coords.HasValue)
+            {
+                vendor.Latitude = coords.Value.Latitude;
+                vendor.Longitude = coords.Value.Longitude;
+            }
+        }
 
         await _repo.SaveChangesAsync();
         return ToDto(vendor);
@@ -58,5 +76,7 @@ public class UpdateVendorCommandHandler : IRequestHandler<UpdateVendorCommand, V
         v.Website,
         v.ReviewCount,
         v.GoogleProfileUrl,
+        v.Latitude,
+        v.Longitude,
         v.User?.Adapt<UserDto>());
 }

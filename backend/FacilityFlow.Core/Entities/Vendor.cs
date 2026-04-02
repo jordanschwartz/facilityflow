@@ -22,6 +22,8 @@ public class Vendor
     public string? Website { get; set; }
     public int? ReviewCount { get; set; }
     public string? GoogleProfileUrl { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public User? User { get; set; }
     public ICollection<VendorInvite> Invites { get; set; } = new List<VendorInvite>();
     public ICollection<Quote> Quotes { get; set; } = new List<Quote>();

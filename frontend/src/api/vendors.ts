@@ -46,8 +46,8 @@ export const vendorsApi = {
     apiClient.put<VendorPayment>(`/vendors/${vendorId}/payments/${paymentId}`, data),
 
   // Sourcing
-  getNearbyVendors: (zip: string, radiusMiles?: number, trade?: string) =>
-    apiClient.get<VendorSourcingResult[]>('/vendors/nearby', { params: { zip, radiusMiles, trade } }),
+  getNearbyVendors: (zip: string, radiusMiles?: number, trade?: string, search?: string) =>
+    apiClient.get<VendorSourcingResult[]>('/vendors/nearby', { params: { zip, radiusMiles, trade, search } }),
 
   // Discovery
   discover: (params: { trade: string; zip: string; radiusMiles?: number }) =>

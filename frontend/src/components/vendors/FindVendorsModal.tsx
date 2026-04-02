@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { vendorsApi } from '../../api/vendors';
+import { serviceRequestsApi } from '../../api/serviceRequests';
 import type { VendorSourcingResult, DiscoveredVendor } from '../../types';
 import Modal from '../ui/Modal';
 import LoadingSpinner from '../ui/LoadingSpinner';
@@ -16,7 +17,7 @@ interface FindVendorsModalProps {
   onClose: () => void;
   serviceRequestZip: string;
   requiredTrade?: string;
-  onSelectVendor: (vendor: VendorSourcingResult) => void;
+  serviceRequestId?: string;
 }
 
 const TRADE_OPTIONS = [
@@ -38,7 +39,7 @@ export default function FindVendorsModal({
   onClose,
   serviceRequestZip,
   requiredTrade,
-  onSelectVendor,
+  serviceRequestId,
 }: FindVendorsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('local');
 
@@ -72,72 +73,122 @@ export default function FindVendorsModal({
         <LocalVendorsTab
           serviceRequestZip={serviceRequestZip}
           requiredTrade={requiredTrade}
-          onSelectVendor={onSelectVendor}
+          serviceRequestId={serviceRequestId}
           isOpen={isOpen}
         />
       ) : (
         <DiscoverVendorsTab
           serviceRequestZip={serviceRequestZip}
           requiredTrade={requiredTrade}
+          serviceRequestId={serviceRequestId}
         />
       )}
     </Modal>
   );
 }
 
-/* ─── Local Vendors Tab (existing functionality) ─── */
+/* ─── Local Vendors Tab ─── */
 
 function LocalVendorsTab({
   serviceRequestZip,
   requiredTrade,
-  onSelectVendor,
+  serviceRequestId,
   isOpen,
 }: {
   serviceRequestZip: string;
   requiredTrade?: string;
-  onSelectVendor: (vendor: VendorSourcingResult) => void;
+  serviceRequestId?: string;
   isOpen: boolean;
 }) {
+  const queryClient = useQueryClient();
   const [tradeFilter, setTradeFilter] = useState(requiredTrade ?? '');
-  const [radiusOverride, setRadiusOverride] = useState('');
+  const [nameSearch, setNameSearch] = useState('');
+  const [zip, setZip] = useState(serviceRequestZip);
+  const [radius, setRadius] = useState(25);
 
   const { data: vendors, isLoading } = useQuery({
-    queryKey: ['vendors', 'nearby', serviceRequestZip, tradeFilter, radiusOverride],
+    queryKey: ['vendors', 'nearby', zip, tradeFilter, radius, nameSearch],
     queryFn: () =>
       vendorsApi.getNearbyVendors(
-        serviceRequestZip,
-        radiusOverride ? parseInt(radiusOverride, 10) : undefined,
+        zip,
+        radius,
         tradeFilter || undefined,
+        nameSearch || undefined,
       ).then(r => r.data),
-    enabled: isOpen && !!serviceRequestZip,
+    enabled: isOpen && !!zip,
+  });
+
+  // Client-side name filter fallback in case backend doesn't support search param
+  const filtered = nameSearch && vendors
+    ? vendors.filter(v => v.companyName.toLowerCase().includes(nameSearch.toLowerCase()))
+    : vendors;
+
+  const inviteMutation = useMutation({
+    mutationFn: (vendorId: string) => serviceRequestsApi.createInvites(serviceRequestId!, [vendorId]),
+    onSuccess: () => {
+      toast.success('Vendor invited');
+      queryClient.invalidateQueries({ queryKey: ['service-requests', serviceRequestId, 'invites'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
+    },
+    onError: () => toast.error('Failed to invite vendor'),
   });
 
   return (
     <div className="space-y-4">
       {/* Filter controls */}
-      <div className="flex gap-3">
-        <input
-          type="text"
-          placeholder="Filter by trade..."
-          value={tradeFilter}
-          onChange={e => setTradeFilter(e.target.value)}
-          className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
-        />
-        <div className="relative">
+      <div className="flex flex-wrap gap-3">
+        <div className="flex-1 min-w-[140px]">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Trade / Specialty</label>
           <input
-            type="number"
-            placeholder="Radius (mi)"
-            value={radiusOverride}
-            onChange={e => setRadiusOverride(e.target.value)}
-            min={1}
-            max={500}
-            className="w-32 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+            type="text"
+            list="local-trade-options"
+            value={tradeFilter}
+            onChange={e => setTradeFilter(e.target.value)}
+            placeholder="e.g. HVAC, Electrical..."
+            className="block w-full border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
           />
+          <datalist id="local-trade-options">
+            {TRADE_OPTIONS.map(t => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
+        </div>
+        <div className="flex-1 min-w-[140px]">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Vendor Name</label>
+          <input
+            type="text"
+            value={nameSearch}
+            onChange={e => setNameSearch(e.target.value)}
+            placeholder="Search by name..."
+            className="block w-full border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+          />
+        </div>
+        <div className="w-28">
+          <label className="block text-xs font-medium text-gray-700 mb-1">ZIP Code</label>
+          <input
+            type="text"
+            value={zip}
+            onChange={e => setZip(e.target.value)}
+            maxLength={5}
+            className="block w-full border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+          />
+        </div>
+        <div className="w-32">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Radius</label>
+          <select
+            value={radius}
+            onChange={e => setRadius(Number(e.target.value))}
+            className="block w-full border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+          >
+            {RADIUS_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
       <p className="text-xs text-gray-500">
-        Searching near ZIP <span className="font-medium text-gray-700">{serviceRequestZip}</span>
+        Searching near ZIP <span className="font-medium text-gray-700">{zip}</span>
         {tradeFilter && <> for <span className="font-medium text-gray-700">{tradeFilter}</span></>}
       </p>
 
@@ -147,16 +198,18 @@ function LocalVendorsTab({
           <div className="flex items-center justify-center h-32">
             <LoadingSpinner />
           </div>
-        ) : (vendors ?? []).length === 0 ? (
+        ) : (filtered ?? []).length === 0 ? (
           <div className="flex items-center justify-center h-32 text-center">
             <p className="text-sm text-gray-500">No vendors found for this area and trade.</p>
           </div>
         ) : (
-          vendors?.map(vendor => (
+          filtered?.map(vendor => (
             <LocalVendorCard
               key={vendor.vendorId}
               vendor={vendor}
-              onSelect={onSelectVendor}
+              canInvite={!!serviceRequestId}
+              isInviting={inviteMutation.isPending && inviteMutation.variables === vendor.vendorId}
+              onInvite={() => inviteMutation.mutate(vendor.vendorId)}
             />
           ))
         )}
@@ -167,10 +220,14 @@ function LocalVendorsTab({
 
 function LocalVendorCard({
   vendor,
-  onSelect,
+  canInvite,
+  isInviting,
+  onInvite,
 }: {
   vendor: VendorSourcingResult;
-  onSelect: (v: VendorSourcingResult) => void;
+  canInvite: boolean;
+  isInviting: boolean;
+  onInvite: () => void;
 }) {
   return (
     <div className={`rounded-lg border p-4 ${vendor.isDnu ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
@@ -195,6 +252,9 @@ function LocalVendorCard({
           </p>
           <p className="text-xs text-gray-500 mt-0.5">
             {vendor.serviceRadiusMiles} mi radius from {vendor.primaryZip}
+            {vendor.distanceMiles != null && (
+              <span className="ml-2 text-brand-600 font-medium">{vendor.distanceMiles.toFixed(1)} mi away</span>
+            )}
           </p>
 
           {vendor.trades.length > 0 && (
@@ -216,15 +276,22 @@ function LocalVendorCard({
 
         <div className="flex-shrink-0">
           {vendor.isDnu ? (
-            <span title="Cannot select a Do Not Use vendor" className="inline-block">
+            <span title="Cannot invite a Do Not Use vendor" className="inline-block">
               <Button size="sm" disabled variant="secondary">
-                Select
+                Invite
               </Button>
             </span>
-          ) : (
-            <Button size="sm" onClick={() => onSelect(vendor)}>
-              Select
+          ) : canInvite ? (
+            <Button size="sm" onClick={onInvite} loading={isInviting}>
+              Invite
             </Button>
+          ) : (
+            <Link
+              to={`/vendors/${vendor.vendorId}`}
+              className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-brand-600 hover:text-brand-700 border border-brand-200 hover:bg-brand-50"
+            >
+              View
+            </Link>
           )}
         </div>
       </div>
@@ -247,9 +314,11 @@ export function SourceVendorsModal({ isOpen, onClose }: { isOpen: boolean; onClo
 function DiscoverVendorsTab({
   serviceRequestZip,
   requiredTrade,
+  serviceRequestId,
 }: {
   serviceRequestZip: string;
   requiredTrade?: string;
+  serviceRequestId?: string;
 }) {
   const queryClient = useQueryClient();
   const [trade, setTrade] = useState(requiredTrade ?? '');
@@ -257,6 +326,7 @@ function DiscoverVendorsTab({
   const [radius, setRadius] = useState(25);
   const [searchTriggered, setSearchTriggered] = useState(false);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [addedVendorMap, setAddedVendorMap] = useState<Map<string, string>>(new Map());
 
   const { data: results, isFetching, isError, refetch } = useQuery({
     queryKey: ['vendors', 'discover', trade, zip, radius],
@@ -286,15 +356,28 @@ function DiscoverVendorsTab({
         trades: trade ? [trade] : undefined,
       });
     },
-    onSuccess: (_data, vendor) => {
+    onSuccess: (response, vendor) => {
       toast.success('Vendor added as prospect');
       setAddedIds(prev => new Set(prev).add(vendor.businessName));
+      if (response.data?.id) {
+        setAddedVendorMap(prev => new Map(prev).set(vendor.businessName, response.data.id));
+      }
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || error?.response?.data || 'Failed to add prospect';
       toast.error(typeof message === 'string' ? message : 'Failed to add prospect');
     },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: (vendorId: string) => serviceRequestsApi.createInvites(serviceRequestId!, [vendorId]),
+    onSuccess: () => {
+      toast.success('Vendor invited');
+      queryClient.invalidateQueries({ queryKey: ['service-requests', serviceRequestId, 'invites'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
+    },
+    onError: () => toast.error('Failed to invite vendor'),
   });
 
   return (
@@ -385,6 +468,10 @@ function DiscoverVendorsTab({
               isAdded={addedIds.has(vendor.businessName) || !!vendor.existingVendorId}
               isAdding={addProspectMutation.isPending && addProspectMutation.variables?.businessName === vendor.businessName}
               onAdd={() => addProspectMutation.mutate(vendor)}
+              canInvite={!!serviceRequestId}
+              addedVendorId={addedVendorMap.get(vendor.businessName) || vendor.existingVendorId}
+              isInviting={inviteMutation.isPending}
+              onInvite={(vendorId: string) => inviteMutation.mutate(vendorId)}
             />
           ))
         )}
@@ -398,11 +485,19 @@ function DiscoveredVendorCard({
   isAdded,
   isAdding,
   onAdd,
+  canInvite,
+  addedVendorId,
+  isInviting,
+  onInvite,
 }: {
   vendor: DiscoveredVendor;
   isAdded: boolean;
   isAdding: boolean;
   onAdd: () => void;
+  canInvite: boolean;
+  addedVendorId?: string;
+  isInviting: boolean;
+  onInvite: (vendorId: string) => void;
 }) {
   const truncateUrl = (url: string) => {
     try {
@@ -501,19 +596,33 @@ function DiscoveredVendorCard({
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
                 Already in system
               </span>
-              <Link
-                to={`/vendors/${vendor.existingVendorId}`}
-                className="text-xs text-brand-600 hover:text-brand-700 font-medium"
-                onClick={e => e.stopPropagation()}
-              >
-                View vendor
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  to={`/vendors/${vendor.existingVendorId}`}
+                  className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                  onClick={e => e.stopPropagation()}
+                >
+                  View vendor
+                </Link>
+                {canInvite && (
+                  <Button size="sm" onClick={() => onInvite(vendor.existingVendorId!)} loading={isInviting}>
+                    Invite
+                  </Button>
+                )}
+              </div>
             </>
           ) : isAdded ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-green-700 bg-green-50 border border-green-200">
-              <CheckCircleIcon className="w-4 h-4" />
-              Added
-            </span>
+            <div className="flex flex-col items-end gap-2">
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-green-700 bg-green-50 border border-green-200">
+                <CheckCircleIcon className="w-4 h-4" />
+                Added
+              </span>
+              {canInvite && addedVendorId && (
+                <Button size="sm" onClick={() => onInvite(addedVendorId)} loading={isInviting}>
+                  Invite
+                </Button>
+              )}
+            </div>
           ) : (
             <Button size="sm" onClick={onAdd} loading={isAdding}>
               Add as Prospect
