@@ -1,3 +1,4 @@
+using System.Globalization;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
 using FacilityFlow.Core.Interfaces.Services;
@@ -200,9 +201,9 @@ public class ProposalPdfService : IProposalPdfService
                             table.Cell().Background(bg).Padding(6).AlignRight()
                                 .Text(item.Quantity.ToString("G")).FontSize(9);
                             table.Cell().Background(bg).Padding(6).AlignRight()
-                                .Text(item.UnitPrice.ToString("C")).FontSize(9);
+                                .Text(item.UnitPrice.ToString("C", CultureInfo.GetCultureInfo("en-US"))).FontSize(9);
                             table.Cell().Background(bg).Padding(6).AlignRight()
-                                .Text(lineTotal.ToString("C")).FontSize(9);
+                                .Text(lineTotal.ToString("C", CultureInfo.GetCultureInfo("en-US"))).FontSize(9);
                         }
                     });
 
@@ -211,7 +212,7 @@ public class ProposalPdfService : IProposalPdfService
                     pricing.Item().PaddingTop(4).AlignRight().Row(row =>
                     {
                         row.ConstantItem(90).AlignRight().Text("Subtotal:").FontSize(10).FontColor(GrayTextHex);
-                        row.ConstantItem(100).AlignRight().Text(subtotal.ToString("C")).FontSize(10);
+                        row.ConstantItem(100).AlignRight().Text(subtotal.ToString("C", CultureInfo.GetCultureInfo("en-US"))).FontSize(10);
                     });
                 }
 
@@ -223,7 +224,7 @@ public class ProposalPdfService : IProposalPdfService
                         row.ConstantItem(120).AlignRight().Text("Not to Exceed:")
                             .FontSize(10).FontColor(GrayTextHex);
                         row.ConstantItem(100).AlignRight()
-                            .Text(proposal.NotToExceedPrice.Value.ToString("C")).FontSize(10);
+                            .Text(proposal.NotToExceedPrice.Value.ToString("C", CultureInfo.GetCultureInfo("en-US"))).FontSize(10);
                     });
                 }
 
@@ -234,7 +235,7 @@ public class ProposalPdfService : IProposalPdfService
                         row.ConstantItem(80).AlignRight().Text("Total:")
                             .Bold().FontSize(14).FontColor(PrimaryHex);
                         row.ConstantItem(120).AlignRight()
-                            .Text(proposal.Price.ToString("C"))
+                            .Text(proposal.Price.ToString("C", CultureInfo.GetCultureInfo("en-US")))
                             .Bold().FontSize(14).FontColor(PrimaryHex);
                     });
             });
