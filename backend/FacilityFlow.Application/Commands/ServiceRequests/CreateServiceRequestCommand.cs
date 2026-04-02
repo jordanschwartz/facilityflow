@@ -20,14 +20,18 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
     private readonly IRepository<Client> _clients;
     private readonly INotificationService _notifications;
 
+    private readonly IActivityLogger _activityLogger;
+
     public CreateServiceRequestCommandHandler(
         IServiceRequestRepository serviceRequests,
         IRepository<Client> clients,
-        INotificationService notifications)
+        INotificationService notifications,
+        IActivityLogger activityLogger)
     {
         _serviceRequests = serviceRequests;
         _clients = clients;
         _notifications = notifications;
+        _activityLogger = activityLogger;
     }
 
     public async Task<ServiceRequestDto> Handle(CreateServiceRequestCommand command, CancellationToken cancellationToken)
@@ -60,6 +64,11 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
         await _notifications.CreateAsync(client.UserId, "ServiceRequest.Created",
             $"A new service request '{sr.Title}' has been created for your account.",
             $"/service-requests/{sr.Id}");
+
+        await _activityLogger.LogAsync(
+            sr.Id, null,
+            "Created work order",
+            ActivityLogCategory.System, string.Empty, null);
 
         var result = await _serviceRequests.GetWithDetailsAsync(sr.Id);
 

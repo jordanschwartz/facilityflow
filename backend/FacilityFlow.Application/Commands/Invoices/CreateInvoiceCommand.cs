@@ -4,6 +4,7 @@ using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,11 +16,13 @@ public class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceCommand,
 {
     private readonly IRepository<WorkOrder> _workOrders;
     private readonly IInvoiceRepository _invoiceRepo;
+    private readonly IActivityLogger _activityLogger;
 
-    public CreateInvoiceCommandHandler(IRepository<WorkOrder> workOrders, IInvoiceRepository invoiceRepo)
+    public CreateInvoiceCommandHandler(IRepository<WorkOrder> workOrders, IInvoiceRepository invoiceRepo, IActivityLogger activityLogger)
     {
         _workOrders = workOrders;
         _invoiceRepo = invoiceRepo;
+        _activityLogger = activityLogger;
     }
 
     public async Task<InvoiceDto> Handle(CreateInvoiceCommand command, CancellationToken cancellationToken)
@@ -57,6 +60,11 @@ public class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceCommand,
 
         _invoiceRepo.Add(invoice);
         await _invoiceRepo.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(
+            wo.ServiceRequestId, wo.Id,
+            $"Invoice created for {req.Amount:C}",
+            ActivityLogCategory.Financial, string.Empty, null);
 
         var result = await _invoiceRepo.GetWithDetailsAsync(invoice.Id);
         return InvoiceMappingHelper.MapToDto(result!);

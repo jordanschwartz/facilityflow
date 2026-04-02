@@ -1,8 +1,10 @@
 using FacilityFlow.Application.DTOs.Common;
 using FacilityFlow.Application.DTOs.ServiceRequests;
 using FacilityFlow.Core.DTOs.Auth;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using FacilityFlow.Core.StateMachines;
 using Mapster;
 using MediatR;
@@ -14,9 +16,13 @@ public record UpdateServiceRequestStatusCommand(Guid Id, UpdateServiceRequestSta
 public class UpdateServiceRequestStatusCommandHandler : IRequestHandler<UpdateServiceRequestStatusCommand, ServiceRequestDto>
 {
     private readonly IServiceRequestRepository _serviceRequests;
+    private readonly IActivityLogger _activityLogger;
 
-    public UpdateServiceRequestStatusCommandHandler(IServiceRequestRepository serviceRequests)
-        => _serviceRequests = serviceRequests;
+    public UpdateServiceRequestStatusCommandHandler(IServiceRequestRepository serviceRequests, IActivityLogger activityLogger)
+    {
+        _serviceRequests = serviceRequests;
+        _activityLogger = activityLogger;
+    }
 
     public async Task<ServiceRequestDto> Handle(UpdateServiceRequestStatusCommand command, CancellationToken cancellationToken)
     {
@@ -26,9 +32,15 @@ public class UpdateServiceRequestStatusCommandHandler : IRequestHandler<UpdateSe
         if (!ServiceRequestStateMachine.CanTransition(sr.Status, command.Request.Status))
             throw new InvalidTransitionException(sr.Status.ToString(), command.Request.Status.ToString());
 
+        var oldStatus = sr.Status;
         sr.Status = command.Request.Status;
         sr.UpdatedAt = DateTime.UtcNow;
         await _serviceRequests.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(
+            sr.Id, null,
+            $"Changed status from {oldStatus} → {command.Request.Status}",
+            ActivityLogCategory.StatusChange, string.Empty, null);
 
         return new ServiceRequestDto(
             sr.Id,

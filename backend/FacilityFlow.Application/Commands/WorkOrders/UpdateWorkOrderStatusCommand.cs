@@ -5,6 +5,7 @@ using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,8 +16,13 @@ public record UpdateWorkOrderStatusCommand(Guid Id, UpdateWorkOrderStatusRequest
 public class UpdateWorkOrderStatusCommandHandler : IRequestHandler<UpdateWorkOrderStatusCommand, WorkOrderDto>
 {
     private readonly IRepository<WorkOrder> _repo;
+    private readonly IActivityLogger _activityLogger;
 
-    public UpdateWorkOrderStatusCommandHandler(IRepository<WorkOrder> repo) => _repo = repo;
+    public UpdateWorkOrderStatusCommandHandler(IRepository<WorkOrder> repo, IActivityLogger activityLogger)
+    {
+        _repo = repo;
+        _activityLogger = activityLogger;
+    }
 
     public async Task<WorkOrderDto> Handle(UpdateWorkOrderStatusCommand request, CancellationToken cancellationToken)
     {
@@ -34,6 +40,7 @@ public class UpdateWorkOrderStatusCommandHandler : IRequestHandler<UpdateWorkOrd
             .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException("Work order not found.");
 
+        var oldStatus = wo.Status;
         wo.Status = request.Request.Status;
 
         if (!string.IsNullOrWhiteSpace(request.Request.VendorNotes))
@@ -50,6 +57,12 @@ public class UpdateWorkOrderStatusCommandHandler : IRequestHandler<UpdateWorkOrd
         }
 
         await _repo.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(
+            wo.ServiceRequestId, wo.Id,
+            $"Changed status from {oldStatus} \u2192 {request.Request.Status}",
+            ActivityLogCategory.StatusChange, string.Empty, null);
+
         return MapToDetail(wo);
     }
 

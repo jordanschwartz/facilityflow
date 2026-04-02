@@ -135,13 +135,13 @@ export default function DashboardPage() {
 
       {/* Kanban */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="grid grid-cols-7 gap-3 min-w-0">
           {PIPELINE_PHASES.map((phase) => {
             const items = getPhaseItems(phase);
             const count = getPhaseCount(phase);
             const isPOGate = phase.id === 'po';
             return (
-              <div key={phase.id} className="flex-shrink-0 w-72">
+              <div key={phase.id} className="min-w-0">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-gray-700">{phase.label}</h3>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${phase.color} ${isPOGate ? 'text-red-700' : 'text-gray-700'}`}>

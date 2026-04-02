@@ -19,19 +19,22 @@ public class RespondToProposalCommandHandler : IRequestHandler<RespondToProposal
     private readonly IRepository<Vendor> _vendors;
     private readonly IUserRepository _users;
     private readonly INotificationService _notifications;
+    private readonly IActivityLogger _activityLogger;
 
     public RespondToProposalCommandHandler(
         IProposalRepository proposals,
         IRepository<WorkOrder> workOrders,
         IRepository<Vendor> vendors,
         IUserRepository users,
-        INotificationService notifications)
+        INotificationService notifications,
+        IActivityLogger activityLogger)
     {
         _proposals = proposals;
         _workOrders = workOrders;
         _vendors = vendors;
         _users = users;
         _notifications = notifications;
+        _activityLogger = activityLogger;
     }
 
     public async Task<ProposalDto> Handle(RespondToProposalCommand command, CancellationToken cancellationToken)
@@ -100,6 +103,14 @@ public class RespondToProposalCommandHandler : IRequestHandler<RespondToProposal
         }
 
         await _proposals.SaveChangesAsync();
+
+        var action = proposal.Status == ProposalStatus.Approved
+            ? "Client approved proposal"
+            : "Client rejected proposal";
+        await _activityLogger.LogAsync(
+            proposal.ServiceRequestId, null,
+            action,
+            ActivityLogCategory.StatusChange, "Client", null);
 
         var result = await _proposals.GetWithFullDetailsAsync(proposal.Id);
         return GetProposalByIdQueryHandler.BuildProposalDto(result!);

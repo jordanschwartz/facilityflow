@@ -16,11 +16,13 @@ public class UploadPoCommandHandler : IRequestHandler<UploadPoCommand, ServiceRe
 {
     private readonly IServiceRequestRepository _serviceRequests;
     private readonly IFileStorageService _fileStorage;
+    private readonly IActivityLogger _activityLogger;
 
-    public UploadPoCommandHandler(IServiceRequestRepository serviceRequests, IFileStorageService fileStorage)
+    public UploadPoCommandHandler(IServiceRequestRepository serviceRequests, IFileStorageService fileStorage, IActivityLogger activityLogger)
     {
         _serviceRequests = serviceRequests;
         _fileStorage = fileStorage;
+        _activityLogger = activityLogger;
     }
 
     public async Task<ServiceRequestDto> Handle(UploadPoCommand command, CancellationToken cancellationToken)
@@ -41,6 +43,11 @@ public class UploadPoCommandHandler : IRequestHandler<UploadPoCommand, ServiceRe
         sr.UpdatedAt = DateTime.UtcNow;
 
         await _serviceRequests.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(
+            sr.Id, null,
+            $"Uploaded purchase order (PO #{command.PoNumber})",
+            ActivityLogCategory.Financial, string.Empty, null);
 
         return new ServiceRequestDto(
             sr.Id,

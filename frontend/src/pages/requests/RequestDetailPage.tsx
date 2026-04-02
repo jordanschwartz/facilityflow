@@ -8,7 +8,6 @@ import toast from 'react-hot-toast';
 import { serviceRequestsApi } from '../../api/serviceRequests';
 import { vendorsApi } from '../../api/vendors';
 import { quotesApi } from '../../api/quotes';
-import { commentsApi } from '../../api/comments';
 import { proposalsApi } from '../../api/proposals';
 import { invoicesApi } from '../../api/invoices';
 import FindVendorsModal from '../../components/vendors/FindVendorsModal';
@@ -22,6 +21,7 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import { formatDate, formatCurrency, formatRelativeTime } from '../../utils/formatters';
+import ActivityTimeline from '../../components/ActivityTimeline';
 import { useAuthStore } from '../../stores/authStore';
 import {
   PaperClipIcon,
@@ -72,9 +72,6 @@ const TAB_LABELS: Record<Tab, string> = {
   'po-scheduling': 'PO & Scheduling',
   invoice: 'Invoice',
 };
-
-const commentSchema = z.object({ text: z.string().min(1, 'Comment cannot be empty') });
-type CommentForm = z.infer<typeof commentSchema>;
 
 const detailsSchema = z.object({
   title: z.string().min(1),
@@ -206,12 +203,6 @@ export default function RequestDetailPage() {
   }, [tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const switchTab = (tab: Tab) => { setActiveTab(tab); setSearchParams({ tab }); };
 
-  // ── File attachment state (comments) ──
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if (!e.target.files) return; setPendingFiles(p => [...p, ...Array.from(e.target.files!)]); e.target.value = ''; };
-  const removePendingFile = (idx: number) => setPendingFiles(p => p.filter((_, i) => i !== idx));
-
   // ── PO file state ──
   const [poFile, setPoFile] = useState<File | null>(null);
   const poFileRef = useRef<HTMLInputElement>(null);
@@ -260,12 +251,6 @@ export default function RequestDetailPage() {
     enabled: !!id && activeTab === 'proposal',
   });
 
-  const { data: comments } = useQuery({
-    queryKey: ['comments', { serviceRequestId: id }],
-    queryFn: () => commentsApi.list({ serviceRequestId: id! }).then(r => r.data),
-    enabled: !!id && activeTab === 'timeline',
-  });
-
   const { data: vendors } = useQuery({
     queryKey: ['vendors', { search: vendorSearch }],
     queryFn: () => vendorsApi.list({ search: vendorSearch || undefined, pageSize: 50 }).then(r => r.data),
@@ -287,48 +272,42 @@ export default function RequestDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['service-requests', id] });
       queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'transitions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     },
     onError: () => toast.error('Failed to update status'),
   });
 
   const createInvites = useMutation({
     mutationFn: (vendorIds: string[]) => serviceRequestsApi.createInvites(id!, vendorIds),
-    onSuccess: () => { toast.success('Vendors invited'); setInviteModalOpen(false); setSelectedVendors([]); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'invites'] }); },
+    onSuccess: () => { toast.success('Vendors invited'); setInviteModalOpen(false); setSelectedVendors([]); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'invites'] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
     onError: () => toast.error('Failed to invite vendors'),
   });
 
   const selectQuote = useMutation({
     mutationFn: (quoteId: string) => quotesApi.updateStatus(quoteId, 'Selected'),
-    onSuccess: () => { toast.success('Quote selected'); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'quotes'] }); },
+    onSuccess: () => { toast.success('Quote selected'); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'quotes'] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
     onError: () => toast.error('Failed to select quote'),
-  });
-
-  const createComment = useMutation({
-    mutationFn: (data: CommentForm) => commentsApi.create({ text: data.text, serviceRequestId: id!, files: pendingFiles.length > 0 ? pendingFiles : undefined }),
-    onSuccess: () => { toast.success('Comment added'); resetComment(); setPendingFiles([]); queryClient.invalidateQueries({ queryKey: ['comments', { serviceRequestId: id }] }); },
-    onError: () => toast.error('Failed to add comment'),
   });
 
   const updateDetails = useMutation({
     mutationFn: (data: DetailsForm) => serviceRequestsApi.update(id!, data),
-    onSuccess: () => { toast.success('Details saved'); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); },
+    onSuccess: () => { toast.success('Details saved'); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
     onError: () => toast.error('Failed to save details'),
   });
 
   const uploadPo = useMutation({
     mutationFn: (data: { poNumber: string; poAmount?: number; file: File }) => serviceRequestsApi.uploadPo(id!, data),
-    onSuccess: () => { toast.success('PO uploaded'); setPoFile(null); resetPo(); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); },
+    onSuccess: () => { toast.success('PO uploaded'); setPoFile(null); resetPo(); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
     onError: () => toast.error('Failed to upload PO'),
   });
 
   const saveSchedule = useMutation({
     mutationFn: (date: string) => serviceRequestsApi.updateSchedule(id!, date),
-    onSuccess: () => { toast.success('Schedule updated'); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); },
+    onSuccess: () => { toast.success('Schedule updated'); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
     onError: () => toast.error('Failed to update schedule'),
   });
 
   // ── Forms ──
-  const { register: registerComment, handleSubmit: handleCommentSubmit, reset: resetComment, formState: { errors: commentErrors, isSubmitting: isSubmittingComment } } = useForm<CommentForm>({ resolver: zodResolver(commentSchema) });
   const { register: registerDetails, handleSubmit: handleDetailsSubmit, formState: { isDirty: detailsDirty } } = useForm<DetailsForm>({
     resolver: zodResolver(detailsSchema),
     values: sr ? { title: sr.title, description: sr.description, location: sr.location, category: sr.category, priority: sr.priority } : undefined,
@@ -410,70 +389,7 @@ export default function RequestDetailPage() {
 
           {/* ─── TIMELINE TAB ─── */}
           {activeTab === 'timeline' && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Activity Timeline</h2>
-              <div className="space-y-4 mb-6">
-                {(comments ?? []).length === 0 ? (
-                  <p className="text-sm text-gray-500">No activity yet. Start the conversation below.</p>
-                ) : (
-                  comments?.map(c => (
-                    <div key={c.id} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-sm font-medium flex-shrink-0">
-                        {c.author?.name?.[0]?.toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">{c.author?.name}</span>
-                          <span className="text-xs text-gray-400">{formatRelativeTime(c.createdAt)}</span>
-                        </div>
-                        <p className="text-sm text-gray-700 mt-0.5">{c.text}</p>
-                        {c.attachments?.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {c.attachments.map(att => {
-                              const isImage = att.mimeType.startsWith('image/');
-                              return isImage ? (
-                                <a key={att.id} href={`${API_BASE}${att.url}`} target="_blank" rel="noopener noreferrer">
-                                  <img src={`${API_BASE}${att.url}`} alt={att.filename} className="h-24 w-auto rounded-lg border border-gray-200 object-cover hover:opacity-90" />
-                                </a>
-                              ) : (
-                                <a key={att.id} href={`${API_BASE}${att.url}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-700">
-                                  <PaperClipIcon className="w-3.5 h-3.5 text-gray-400" /><span className="truncate max-w-[120px]">{att.filename}</span>
-                                </a>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Comment input */}
-              <form onSubmit={handleCommentSubmit(data => createComment.mutate(data))} className="space-y-2">
-                <div className="flex gap-2">
-                  <input type="text" {...registerComment('text')} className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500" placeholder="Add a comment..." />
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 hover:text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50" title="Attach files"><PaperClipIcon className="w-5 h-5" /></button>
-                  <Button type="submit" size="sm" loading={isSubmittingComment || createComment.isPending}>Post</Button>
-                </div>
-                <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,.pdf" onChange={handleFileSelect} className="hidden" />
-                {commentErrors.text && <p className="text-xs text-red-600">{commentErrors.text.message}</p>}
-                {pendingFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {pendingFiles.map((file, idx) => {
-                      const isImage = file.type.startsWith('image/');
-                      return (
-                        <div key={idx} className="relative group">
-                          {isImage ? <img src={URL.createObjectURL(file)} alt={file.name} className="h-16 w-16 rounded-lg object-cover border border-gray-200" /> : <div className="h-16 w-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center"><PaperClipIcon className="w-5 h-5 text-gray-400" /></div>}
-                          <button type="button" onClick={() => removePendingFile(idx)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><XMarkIcon className="w-3 h-3" /></button>
-                          <span className="text-[10px] text-gray-500 truncate block w-16 mt-0.5">{file.name}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </form>
-            </div>
+            <ActivityTimeline serviceRequestId={id!} />
           )}
 
           {/* ─── DETAILS TAB ─── */}

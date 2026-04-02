@@ -15,15 +15,18 @@ public class SendInvoiceCommandHandler : IRequestHandler<SendInvoiceCommand, Inv
     private readonly IInvoiceRepository _invoiceRepo;
     private readonly IStripeService _stripeService;
     private readonly INotificationService _notifications;
+    private readonly IActivityLogger _activityLogger;
 
     public SendInvoiceCommandHandler(
         IInvoiceRepository invoiceRepo,
         IStripeService stripeService,
-        INotificationService notifications)
+        INotificationService notifications,
+        IActivityLogger activityLogger)
     {
         _invoiceRepo = invoiceRepo;
         _stripeService = stripeService;
         _notifications = notifications;
+        _activityLogger = activityLogger;
     }
 
     public async Task<InvoiceDto> Handle(SendInvoiceCommand command, CancellationToken cancellationToken)
@@ -50,6 +53,11 @@ public class SendInvoiceCommandHandler : IRequestHandler<SendInvoiceCommand, Inv
             "Invoice.Sent",
             $"An invoice for {invoice.Amount:C} has been sent for: {invoice.WorkOrder?.ServiceRequest?.Title}",
             "/invoices");
+
+        await _activityLogger.LogAsync(
+            invoice.WorkOrder!.ServiceRequestId, invoice.WorkOrderId,
+            $"Invoice sent ({invoice.Amount:C})",
+            ActivityLogCategory.Financial, string.Empty, null);
 
         var reloaded = await _invoiceRepo.GetWithDetailsAsync(command.Id);
         return InvoiceMappingHelper.MapToDto(reloaded!);

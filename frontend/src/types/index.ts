@@ -263,6 +263,19 @@ export interface PipelineResponse {
   stats: DashboardStats;
 }
 
+export type ActivityLogCategory = 'StatusChange' | 'Communication' | 'FileUpload' | 'Financial' | 'System' | 'Note';
+
+export interface ActivityLog {
+  id: string;
+  serviceRequestId: string;
+  workOrderId?: string;
+  action: string;
+  category: ActivityLogCategory;
+  actorName: string;
+  actorId?: string;
+  createdAt: string;
+}
+
 export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Cancelled';
 
 export interface InvoiceSummary {

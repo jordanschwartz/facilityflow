@@ -19,19 +19,22 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
     private readonly IRepository<VendorInvite> _vendorInvites;
     private readonly IRepository<Quote> _quotes;
     private readonly INotificationService _notifications;
+    private readonly IActivityLogger _activityLogger;
 
     public CreateVendorInvitesCommandHandler(
         IServiceRequestRepository serviceRequests,
         IRepository<Vendor> vendors,
         IRepository<VendorInvite> vendorInvites,
         IRepository<Quote> quotes,
-        INotificationService notifications)
+        INotificationService notifications,
+        IActivityLogger activityLogger)
     {
         _serviceRequests = serviceRequests;
         _vendors = vendors;
         _vendorInvites = vendorInvites;
         _quotes = quotes;
         _notifications = notifications;
+        _activityLogger = activityLogger;
     }
 
     public async Task<CreateVendorInvitesResponse> Handle(CreateVendorInvitesCommand command, CancellationToken cancellationToken)
@@ -95,6 +98,15 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
         }
 
         await _serviceRequests.SaveChangesAsync();
+
+        foreach (var inv in created)
+        {
+            var vendor = await _vendors.GetByIdAsync(inv.VendorId);
+            await _activityLogger.LogAsync(
+                command.ServiceRequestId, null,
+                $"Sent quote request to {vendor?.CompanyName ?? "vendor"}",
+                ActivityLogCategory.Communication, string.Empty, null);
+        }
 
         var createdDtos = new List<VendorInviteDto>();
         foreach (var inv in created)

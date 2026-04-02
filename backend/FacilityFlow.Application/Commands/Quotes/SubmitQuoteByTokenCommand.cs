@@ -18,17 +18,20 @@ public class SubmitQuoteByTokenCommandHandler : IRequestHandler<SubmitQuoteByTok
     private readonly IRepository<VendorInvite> _vendorInvites;
     private readonly INotificationService _notifications;
     private readonly IUserRepository _users;
+    private readonly IActivityLogger _activityLogger;
 
     public SubmitQuoteByTokenCommandHandler(
         IQuoteRepository quotes,
         IRepository<VendorInvite> vendorInvites,
         INotificationService notifications,
-        IUserRepository users)
+        IUserRepository users,
+        IActivityLogger activityLogger)
     {
         _quotes = quotes;
         _vendorInvites = vendorInvites;
         _notifications = notifications;
         _users = users;
+        _activityLogger = activityLogger;
     }
 
     public async Task<QuoteDto> Handle(SubmitQuoteByTokenCommand command, CancellationToken cancellationToken)
@@ -86,6 +89,11 @@ public class SubmitQuoteByTokenCommandHandler : IRequestHandler<SubmitQuoteByTok
         }
 
         await _quotes.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(
+            quote.ServiceRequestId, null,
+            $"Received quote from {quote.Vendor?.CompanyName ?? "vendor"}",
+            ActivityLogCategory.Communication, quote.Vendor?.CompanyName ?? "Vendor", null);
 
         // Notify operators
         var operators = await _users.GetByRoleAsync(UserRole.Operator);

@@ -29,7 +29,8 @@ public class CreateCommentCommandHandler : IRequestHandler<CreateCommentCommand,
 
     public CreateCommentCommandHandler(
         IRepository<Comment> comments, IRepository<User> users,
-        IRepository<Attachment> attachments, IFileStorageService fileStorage)
+        IRepository<Attachment> attachments,
+        IFileStorageService fileStorage)
     {
         _comments = comments;
         _users = users;

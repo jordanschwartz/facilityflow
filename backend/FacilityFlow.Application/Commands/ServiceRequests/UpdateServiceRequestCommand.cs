@@ -1,8 +1,10 @@
 using FacilityFlow.Application.DTOs.Common;
 using FacilityFlow.Application.DTOs.ServiceRequests;
 using FacilityFlow.Core.DTOs.Auth;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using Mapster;
 using MediatR;
 
@@ -13,9 +15,13 @@ public record UpdateServiceRequestCommand(Guid Id, UpdateServiceRequestRequest R
 public class UpdateServiceRequestCommandHandler : IRequestHandler<UpdateServiceRequestCommand, ServiceRequestDto>
 {
     private readonly IServiceRequestRepository _serviceRequests;
+    private readonly IActivityLogger _activityLogger;
 
-    public UpdateServiceRequestCommandHandler(IServiceRequestRepository serviceRequests)
-        => _serviceRequests = serviceRequests;
+    public UpdateServiceRequestCommandHandler(IServiceRequestRepository serviceRequests, IActivityLogger activityLogger)
+    {
+        _serviceRequests = serviceRequests;
+        _activityLogger = activityLogger;
+    }
 
     public async Task<ServiceRequestDto> Handle(UpdateServiceRequestCommand command, CancellationToken cancellationToken)
     {
@@ -23,6 +29,13 @@ public class UpdateServiceRequestCommandHandler : IRequestHandler<UpdateServiceR
             ?? throw new NotFoundException("Service request not found.");
 
         var req = command.Request;
+        var changes = new List<string>();
+        if (sr.Title != req.Title) changes.Add("title");
+        if (sr.Description != req.Description) changes.Add("description");
+        if (sr.Location != req.Location) changes.Add("location");
+        if (sr.Category != req.Category) changes.Add("category");
+        if (sr.Priority != req.Priority) changes.Add($"priority to {req.Priority}");
+
         sr.Title = req.Title;
         sr.Description = req.Description;
         sr.Location = req.Location;
@@ -31,6 +44,14 @@ public class UpdateServiceRequestCommandHandler : IRequestHandler<UpdateServiceR
         sr.UpdatedAt = DateTime.UtcNow;
 
         await _serviceRequests.SaveChangesAsync();
+
+        if (changes.Count > 0)
+        {
+            await _activityLogger.LogAsync(
+                sr.Id, null,
+                $"Updated {string.Join(", ", changes)}",
+                ActivityLogCategory.System, string.Empty, null);
+        }
 
         return new ServiceRequestDto(
             sr.Id,

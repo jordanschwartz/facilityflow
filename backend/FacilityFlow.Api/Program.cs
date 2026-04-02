@@ -14,6 +14,7 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // ---- Infrastructure + Application ----
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 

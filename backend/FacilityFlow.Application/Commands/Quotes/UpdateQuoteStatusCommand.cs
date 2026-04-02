@@ -4,6 +4,7 @@ using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,11 +16,13 @@ public class UpdateQuoteStatusCommandHandler : IRequestHandler<UpdateQuoteStatus
 {
     private readonly IQuoteRepository _quotes;
     private readonly IRepository<ServiceRequest> _serviceRequests;
+    private readonly IActivityLogger _activityLogger;
 
-    public UpdateQuoteStatusCommandHandler(IQuoteRepository quotes, IRepository<ServiceRequest> serviceRequests)
+    public UpdateQuoteStatusCommandHandler(IQuoteRepository quotes, IRepository<ServiceRequest> serviceRequests, IActivityLogger activityLogger)
     {
         _quotes = quotes;
         _serviceRequests = serviceRequests;
+        _activityLogger = activityLogger;
     }
 
     public async Task<QuoteDto> Handle(UpdateQuoteStatusCommand command, CancellationToken cancellationToken)
@@ -51,6 +54,14 @@ public class UpdateQuoteStatusCommandHandler : IRequestHandler<UpdateQuoteStatus
 
         quote.Status = command.Request.Status;
         await _quotes.SaveChangesAsync();
+
+        var action = command.Request.Status == QuoteStatus.Selected
+            ? $"Selected quote from {quote.Vendor?.CompanyName ?? "vendor"}"
+            : $"Rejected quote from {quote.Vendor?.CompanyName ?? "vendor"}";
+        await _activityLogger.LogAsync(
+            quote.ServiceRequestId, null,
+            action,
+            ActivityLogCategory.StatusChange, string.Empty, null);
 
         return QuoteMappingHelper.MapToDto(quote);
     }

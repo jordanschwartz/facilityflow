@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IFileStorageService, FileStorageService>();
         services.AddHttpClient<IAiSummaryService, AiSummaryService>();
         services.AddScoped<IStripeService, StripeService>();
+        services.AddScoped<IActivityLogger, ActivityLogger>();
 
         return services;
     }

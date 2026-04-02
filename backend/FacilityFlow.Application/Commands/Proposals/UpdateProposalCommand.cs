@@ -4,6 +4,7 @@ using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,15 +17,18 @@ public class UpdateProposalCommandHandler : IRequestHandler<UpdateProposalComman
     private readonly IProposalRepository _proposals;
     private readonly IRepository<ProposalVersion> _versions;
     private readonly IRepository<ProposalAttachment> _proposalAttachments;
+    private readonly IActivityLogger _activityLogger;
 
     public UpdateProposalCommandHandler(
         IProposalRepository proposals,
         IRepository<ProposalVersion> versions,
-        IRepository<ProposalAttachment> proposalAttachments)
+        IRepository<ProposalAttachment> proposalAttachments,
+        IActivityLogger activityLogger)
     {
         _proposals = proposals;
         _versions = versions;
         _proposalAttachments = proposalAttachments;
+        _activityLogger = activityLogger;
     }
 
     public async Task<ProposalDto> Handle(UpdateProposalCommand command, CancellationToken cancellationToken)
@@ -76,6 +80,11 @@ public class UpdateProposalCommandHandler : IRequestHandler<UpdateProposalComman
 
         proposal.Version++;
         await _proposals.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(
+            proposal.ServiceRequestId, null,
+            $"Updated proposal (v{proposal.Version})",
+            ActivityLogCategory.System, string.Empty, null);
 
         var result = await _proposals.GetWithFullDetailsAsync(command.Id);
         return GetProposalByIdQueryHandler.BuildProposalDto(result!);

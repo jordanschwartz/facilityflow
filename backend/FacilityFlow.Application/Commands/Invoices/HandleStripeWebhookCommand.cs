@@ -12,11 +12,13 @@ public class HandleStripeWebhookCommandHandler : IRequestHandler<HandleStripeWeb
 {
     private readonly IStripeService _stripeService;
     private readonly IInvoiceRepository _invoiceRepo;
+    private readonly IActivityLogger _activityLogger;
 
-    public HandleStripeWebhookCommandHandler(IStripeService stripeService, IInvoiceRepository invoiceRepo)
+    public HandleStripeWebhookCommandHandler(IStripeService stripeService, IInvoiceRepository invoiceRepo, IActivityLogger activityLogger)
     {
         _stripeService = stripeService;
         _invoiceRepo = invoiceRepo;
+        _activityLogger = activityLogger;
     }
 
     public async Task<Unit> Handle(HandleStripeWebhookCommand command, CancellationToken cancellationToken)
@@ -36,6 +38,15 @@ public class HandleStripeWebhookCommandHandler : IRequestHandler<HandleStripeWeb
                 invoice.Status = InvoiceStatus.Paid;
                 invoice.PaidAt = DateTime.UtcNow;
                 await _invoiceRepo.SaveChangesAsync();
+
+                var fullInvoice = await _invoiceRepo.GetWithDetailsAsync(invoice.Id);
+                if (fullInvoice?.WorkOrder != null)
+                {
+                    await _activityLogger.LogAsync(
+                        fullInvoice.WorkOrder.ServiceRequestId, fullInvoice.WorkOrderId,
+                        $"Invoice marked as paid ({fullInvoice.Amount:C})",
+                        ActivityLogCategory.Financial, "System", null);
+                }
             }
         }
 

@@ -17,15 +17,18 @@ public class SendProposalCommandHandler : IRequestHandler<SendProposalCommand, P
     private readonly IProposalRepository _proposals;
     private readonly IRepository<ProposalVersion> _versions;
     private readonly INotificationService _notifications;
+    private readonly IActivityLogger _activityLogger;
 
     public SendProposalCommandHandler(
         IProposalRepository proposals,
         IRepository<ProposalVersion> versions,
-        INotificationService notifications)
+        INotificationService notifications,
+        IActivityLogger activityLogger)
     {
         _proposals = proposals;
         _versions = versions;
         _notifications = notifications;
+        _activityLogger = activityLogger;
     }
 
     public async Task<ProposalDto> Handle(SendProposalCommand command, CancellationToken cancellationToken)
@@ -66,6 +69,11 @@ public class SendProposalCommandHandler : IRequestHandler<SendProposalCommand, P
             "Proposal.Sent",
             $"A proposal has been sent for your service request: {proposal.ServiceRequest.Title}",
             $"/proposals/view/{proposal.PublicToken}");
+
+        await _activityLogger.LogAsync(
+            proposal.ServiceRequestId, null,
+            "Sent proposal to client",
+            ActivityLogCategory.Communication, string.Empty, null);
 
         var result = await _proposals.GetWithFullDetailsAsync(command.Id);
         return GetProposalByIdQueryHandler.BuildProposalDto(result!);

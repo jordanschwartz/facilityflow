@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +41,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WorkOrder>().Property(w => w.Status).HasConversion<string>();
         modelBuilder.Entity<VendorPayment>().Property(vp => vp.Status).HasConversion<string>();
         modelBuilder.Entity<Invoice>().Property(i => i.Status).HasConversion<string>();
+        modelBuilder.Entity<ActivityLog>().Property(a => a.Category).HasConversion<string>();
 
         // JSON columns for Vendor arrays
         modelBuilder.Entity<Vendor>().Property(v => v.Trades).HasColumnType("jsonb");
@@ -128,5 +130,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Invoice>().Property(i => i.Amount).HasPrecision(18, 2);
         modelBuilder.Entity<Invoice>().HasOne(i => i.WorkOrder).WithMany().HasForeignKey(i => i.WorkOrderId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<Invoice>().HasOne(i => i.Client).WithMany().HasForeignKey(i => i.ClientId).OnDelete(DeleteBehavior.Restrict);
+
+        // ActivityLog
+        modelBuilder.Entity<ActivityLog>().Property(a => a.Action).IsRequired();
+        modelBuilder.Entity<ActivityLog>().Property(a => a.ActorName).IsRequired();
+        modelBuilder.Entity<ActivityLog>().HasIndex(a => a.ServiceRequestId);
+        modelBuilder.Entity<ActivityLog>().HasIndex(a => a.WorkOrderId);
+        modelBuilder.Entity<ActivityLog>()
+            .HasOne(a => a.ServiceRequest).WithMany().HasForeignKey(a => a.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ActivityLog>()
+            .HasOne(a => a.WorkOrder).WithMany().HasForeignKey(a => a.WorkOrderId).OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -1,21 +1,20 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { workOrdersApi } from '../../api/workOrders';
-import { commentsApi } from '../../api/comments';
 import type { WorkOrderStatus } from '../../types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityBadge from '../../components/ui/PriorityBadge';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
-import { formatDate, formatRelativeTime } from '../../utils/formatters';
+import { formatDate } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
-import { CheckCircleIcon, PaperClipIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import ActivityTimeline from '../../components/ActivityTimeline';
 
 const STATUS_STEPS: WorkOrderStatus[] = ['Assigned', 'InProgress', 'Completed', 'Closed'];
 const STATUS_LABELS: Record<WorkOrderStatus, string> = {
@@ -30,9 +29,6 @@ const notesSchema = z.object({
 });
 type NotesForm = z.infer<typeof notesSchema>;
 
-const commentSchema = z.object({ text: z.string().min(1, 'Comment cannot be empty') });
-type CommentForm = z.infer<typeof commentSchema>;
-
 export default function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -41,8 +37,6 @@ export default function WorkOrderDetailPage() {
   const isOperator = user?.role === 'Operator';
   const isVendor = user?.role === 'Vendor';
   const [editingNotes, setEditingNotes] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: wo, isLoading } = useQuery({
     queryKey: ['work-orders', id],
@@ -50,18 +44,8 @@ export default function WorkOrderDetailPage() {
     enabled: !!id,
   });
 
-  const { data: comments } = useQuery({
-    queryKey: ['comments', { workOrderId: id }],
-    queryFn: () => commentsApi.list({ workOrderId: id! }).then(r => r.data),
-    enabled: !!id,
-  });
-
   const { register: registerNotes, handleSubmit: handleNotesSubmit, formState: { isSubmitting: isSubmittingNotes } } = useForm<NotesForm>({
     values: wo ? { vendorNotes: wo.vendorNotes ?? '' } : undefined,
-  });
-
-  const { register: registerComment, handleSubmit: handleCommentSubmit, reset: resetComment, formState: { errors: commentErrors, isSubmitting: isSubmittingComment } } = useForm<CommentForm>({
-    resolver: zodResolver(commentSchema),
   });
 
   const updateStatus = useMutation({
@@ -74,29 +58,6 @@ export default function WorkOrderDetailPage() {
     },
     onError: () => toast.error('Failed to update status'),
   });
-
-  const createComment = useMutation({
-    mutationFn: (data: CommentForm) =>
-      commentsApi.create({ text: data.text, workOrderId: id!, files: pendingFiles.length > 0 ? pendingFiles : undefined }),
-    onSuccess: () => {
-      toast.success('Comment added');
-      resetComment();
-      setPendingFiles([]);
-      queryClient.invalidateQueries({ queryKey: ['comments', { workOrderId: id }] });
-    },
-    onError: () => toast.error('Failed to add comment'),
-  });
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    setPendingFiles(prev => [...prev, ...Array.from(files)]);
-    e.target.value = '';
-  };
-
-  const removePendingFile = (index: number) => {
-    setPendingFiles(prev => prev.filter((_, i) => i !== index));
-  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64"><LoadingSpinner /></div>;
@@ -111,8 +72,6 @@ export default function WorkOrderDetailPage() {
   const canMoveToInProgress = (isVendor || isOperator) && wo.status === 'Assigned';
   const canMoveToCompleted = (isVendor || isOperator) && wo.status === 'InProgress';
   const canClose = isOperator && wo.status === 'Completed';
-
-  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
 
   return (
     <div>
@@ -211,119 +170,8 @@ export default function WorkOrderDetailPage() {
             )}
           </div>
 
-          {/* Comments */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Activity</h2>
-            <div className="space-y-4 mb-4">
-              {(comments ?? []).length === 0 ? (
-                <p className="text-sm text-gray-500">No comments yet</p>
-              ) : (
-                comments?.map(c => (
-                  <div key={c.id} className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-sm font-medium flex-shrink-0">
-                      {c.author?.name?.[0]?.toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">{c.author?.name}</span>
-                        <span className="text-xs text-gray-400">{formatRelativeTime(c.createdAt)}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 mt-0.5">{c.text}</p>
-                      {c.attachments?.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {c.attachments.map(att => {
-                            const isImage = att.mimeType.startsWith('image/');
-                            return isImage ? (
-                              <a key={att.id} href={`${baseUrl}${att.url}`} target="_blank" rel="noopener noreferrer">
-                                <img
-                                  src={`${baseUrl}${att.url}`}
-                                  alt={att.filename}
-                                  className="h-24 w-auto rounded-lg border border-gray-200 object-cover hover:opacity-90"
-                                />
-                              </a>
-                            ) : (
-                              <a
-                                key={att.id}
-                                href={`${baseUrl}${att.url}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-700"
-                              >
-                                <PaperClipIcon className="w-3.5 h-3.5 text-gray-400" />
-                                <span className="truncate max-w-[120px]">{att.filename}</span>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Comment form with file attach */}
-            <form onSubmit={handleCommentSubmit(data => createComment.mutate(data))} className="space-y-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  {...registerComment('text')}
-                  className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
-                  placeholder="Add a comment..."
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2 text-gray-400 hover:text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  title="Attach files"
-                >
-                  <PaperClipIcon className="w-5 h-5" />
-                </button>
-                <Button type="submit" size="sm" loading={isSubmittingComment || createComment.isPending}>Post</Button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,video/*,.pdf"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              {commentErrors.text && <p className="text-xs text-red-600">{commentErrors.text.message}</p>}
-
-              {/* Pending file previews */}
-              {pendingFiles.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {pendingFiles.map((file, idx) => {
-                    const isImage = file.type.startsWith('image/');
-                    return (
-                      <div key={idx} className="relative group">
-                        {isImage ? (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt={file.name}
-                            className="h-16 w-16 rounded-lg object-cover border border-gray-200"
-                          />
-                        ) : (
-                          <div className="h-16 w-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center">
-                            <PaperClipIcon className="w-5 h-5 text-gray-400" />
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removePendingFile(idx)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <XMarkIcon className="w-3 h-3" />
-                        </button>
-                        <span className="text-[10px] text-gray-500 truncate block w-16 mt-0.5">{file.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </form>
-          </div>
+          {/* Activity Timeline */}
+          <ActivityTimeline serviceRequestId={wo.serviceRequestId} workOrderId={wo.id} />
         </div>
 
         <div className="space-y-4">

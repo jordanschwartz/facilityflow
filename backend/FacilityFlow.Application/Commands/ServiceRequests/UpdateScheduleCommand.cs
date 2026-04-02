@@ -4,6 +4,7 @@ using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
 using Mapster;
 using MediatR;
 
@@ -14,9 +15,13 @@ public record UpdateScheduleCommand(Guid Id, DateTime ScheduledDate) : IRequest<
 public class UpdateScheduleCommandHandler : IRequestHandler<UpdateScheduleCommand, ServiceRequestDto>
 {
     private readonly IServiceRequestRepository _serviceRequests;
+    private readonly IActivityLogger _activityLogger;
 
-    public UpdateScheduleCommandHandler(IServiceRequestRepository serviceRequests)
-        => _serviceRequests = serviceRequests;
+    public UpdateScheduleCommandHandler(IServiceRequestRepository serviceRequests, IActivityLogger activityLogger)
+    {
+        _serviceRequests = serviceRequests;
+        _activityLogger = activityLogger;
+    }
 
     public async Task<ServiceRequestDto> Handle(UpdateScheduleCommand command, CancellationToken cancellationToken)
     {
@@ -33,6 +38,11 @@ public class UpdateScheduleCommandHandler : IRequestHandler<UpdateScheduleComman
         }
 
         await _serviceRequests.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(
+            sr.Id, null,
+            $"Updated schedule to {command.ScheduledDate:MMM d, yyyy}",
+            ActivityLogCategory.StatusChange, string.Empty, null);
 
         return new ServiceRequestDto(
             sr.Id,
