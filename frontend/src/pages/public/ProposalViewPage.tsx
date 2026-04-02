@@ -10,7 +10,39 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
+
+function ProposalScopeDetails({ assumptions, exclusions }: { assumptions?: string; exclusions?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-6 border border-gray-200 rounded-lg">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
+      >
+        Scope Details
+        {open ? <ChevronUpIcon className="w-4 h-4 text-gray-500" /> : <ChevronDownIcon className="w-4 h-4 text-gray-500" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-100">
+          {assumptions && (
+            <div className="pt-3">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Assumptions</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{assumptions}</p>
+            </div>
+          )}
+          {exclusions && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Exclusions</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{exclusions}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const rejectSchema = z.object({
   clientResponse: z.string().min(5, 'Please provide a reason for rejection'),
@@ -118,6 +150,40 @@ export default function ProposalViewPage() {
             <h2 className="text-sm font-semibold text-gray-900 mb-2">Scope of Work</h2>
             <p className="text-sm text-gray-700 whitespace-pre-wrap">{proposal.scopeOfWork}</p>
           </div>
+
+          {/* NTE */}
+          {proposal.quote?.notToExceedPrice != null && (
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-1">Not-to-Exceed Price</h2>
+              <p className="text-sm text-gray-700">{formatCurrency(proposal.quote.notToExceedPrice)}</p>
+            </div>
+          )}
+
+          {/* Timeline */}
+          {(proposal.quote?.proposedStartDate || (proposal.quote?.estimatedDurationValue != null && proposal.quote?.estimatedDurationUnit)) && (
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-2">Proposed Timeline</h2>
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                {proposal.quote.proposedStartDate && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</p>
+                    <p className="text-sm text-gray-700">{formatDate(proposal.quote.proposedStartDate)}</p>
+                  </div>
+                )}
+                {proposal.quote.estimatedDurationValue != null && proposal.quote.estimatedDurationUnit && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</p>
+                    <p className="text-sm text-gray-700">{proposal.quote.estimatedDurationValue} {proposal.quote.estimatedDurationUnit}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Assumptions / Exclusions */}
+          {(proposal.quote?.assumptions || proposal.quote?.exclusions) && (
+            <ProposalScopeDetails assumptions={proposal.quote.assumptions} exclusions={proposal.quote.exclusions} />
+          )}
 
           {proposal.sentAt && (
             <p className="text-xs text-gray-400">Sent on {formatDate(proposal.sentAt)}</p>

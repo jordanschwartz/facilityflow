@@ -9,7 +9,7 @@ import { serviceRequestsApi } from '../../api/serviceRequests';
 import { vendorsApi } from '../../api/vendors';
 import { quotesApi } from '../../api/quotes';
 import FindVendorsModal from '../../components/vendors/FindVendorsModal';
-import type { VendorSourcingResult } from '../../types';
+import type { VendorSourcingResult, Quote } from '../../types';
 import { proposalsApi } from '../../api/proposals';
 import { commentsApi } from '../../api/comments';
 import type { ServiceRequestStatus } from '../../types';
@@ -21,6 +21,175 @@ import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import { formatDate, formatCurrency, formatRelativeTime } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
+
+function QuoteCard({ quote, isOperator, selectQuote }: {
+  quote: Quote;
+  isOperator: boolean;
+  selectQuote: { mutate: (id: string) => void; isPending: boolean };
+}) {
+  const [lineItemsOpen, setLineItemsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const hasLineItems = quote.lineItems && quote.lineItems.length > 0;
+  const hasDetails = !!(quote.assumptions || quote.exclusions);
+
+  return (
+    <div className="border border-gray-200 rounded-xl bg-white shadow-sm p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-1">
+            <span className="text-sm font-medium text-gray-900">{quote.vendor?.companyName}</span>
+            <StatusBadge status={quote.status} />
+          </div>
+          <p className="text-xs text-gray-500 truncate">{quote.scopeOfWork}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-base font-bold text-gray-900">{formatCurrency(quote.price)}</p>
+          {quote.notToExceedPrice != null && (
+            <p className="text-xs text-gray-500">NTE: {formatCurrency(quote.notToExceedPrice)}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Meta fields */}
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
+        {quote.submittedAt && (
+          <span className="text-xs text-gray-500">Submitted {formatDate(quote.submittedAt)}</span>
+        )}
+        {quote.proposedStartDate && (
+          <span className="text-xs text-gray-500">Start: {formatDate(quote.proposedStartDate)}</span>
+        )}
+        {quote.estimatedDurationValue != null && quote.estimatedDurationUnit && (
+          <span className="text-xs text-gray-500">Duration: {quote.estimatedDurationValue} {quote.estimatedDurationUnit}</span>
+        )}
+        {quote.vendorAvailability && (
+          <span className="text-xs text-gray-500">Availability: {quote.vendorAvailability}</span>
+        )}
+        {quote.validUntil && (
+          <span className="text-xs text-gray-500">Valid until: {formatDate(quote.validUntil)}</span>
+        )}
+      </div>
+
+      {/* Expandable: Line Items */}
+      {hasLineItems && (
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          <button
+            type="button"
+            onClick={() => setLineItemsOpen(v => !v)}
+            className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+          >
+            {lineItemsOpen ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
+            View Line Items ({quote.lineItems.length})
+          </button>
+          {lineItemsOpen && (
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead>
+                  <tr className="text-gray-500">
+                    <th className="text-left font-medium pb-1 pr-4">Description</th>
+                    <th className="text-left font-medium pb-1 pr-4">Qty</th>
+                    <th className="text-left font-medium pb-1 pr-4">Unit Price</th>
+                    <th className="text-left font-medium pb-1">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quote.lineItems.map(li => (
+                    <tr key={li.id} className="border-t border-gray-100">
+                      <td className="py-1 pr-4 text-gray-700">{li.description}</td>
+                      <td className="py-1 pr-4 text-gray-700">{li.quantity}</td>
+                      <td className="py-1 pr-4 text-gray-700">{formatCurrency(li.unitPrice)}</td>
+                      <td className="py-1 text-gray-900 font-medium">{formatCurrency(li.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Expandable: Details (Assumptions / Exclusions) */}
+      {hasDetails && (
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          <button
+            type="button"
+            onClick={() => setDetailsOpen(v => !v)}
+            className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+          >
+            {detailsOpen ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
+            Details
+          </button>
+          {detailsOpen && (
+            <div className="mt-2 space-y-2">
+              {quote.assumptions && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Assumptions</p>
+                  <p className="text-xs text-gray-700 whitespace-pre-wrap">{quote.assumptions}</p>
+                </div>
+              )}
+              {quote.exclusions && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Exclusions</p>
+                  <p className="text-xs text-gray-700 whitespace-pre-wrap">{quote.exclusions}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      {isOperator && (
+        <div className="mt-3 flex items-center gap-2 justify-end">
+          {quote.publicToken && quote.status === 'Requested' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                const link = `${window.location.origin}/quotes/submit/${quote.publicToken}`;
+                navigator.clipboard.writeText(link);
+                toast.success('Link copied to clipboard');
+              }}
+            >
+              Copy Link
+            </Button>
+          )}
+          {quote.status === 'Submitted' && (
+            <Button
+              size="sm"
+              onClick={() => selectQuote.mutate(quote.id)}
+              loading={selectQuote.isPending}
+            >
+              Select
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuotesTab({ quotes, isOperator, selectQuote }: {
+  quotes: Quote[];
+  isOperator: boolean;
+  selectQuote: { mutate: (id: string) => void; isPending: boolean };
+}) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-gray-900 mb-4">Quotes Received</h2>
+      {quotes.length === 0 ? (
+        <EmptyState title="No quotes yet" description="Quotes will appear here as vendors submit them" />
+      ) : (
+        <div className="space-y-4">
+          {quotes.map(quote => (
+            <QuoteCard key={quote.id} quote={quote} isOperator={isOperator} selectQuote={selectQuote} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STATUSES: ServiceRequestStatus[] = ['New', 'Sourcing', 'Quoting', 'PendingApproval', 'Approved', 'Rejected', 'Completed'];
 const TABS = ['overview', 'vendors', 'quotes', 'proposal', 'workorder'] as const;
@@ -420,66 +589,7 @@ export default function RequestDetailPage() {
       )}
 
       {activeTab === 'quotes' && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Quotes Received</h2>
-          {(quotes ?? []).length === 0 ? (
-            <EmptyState title="No quotes yet" description="Quotes will appear here as vendors submit them" />
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scope (Preview)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                    {isOperator && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {quotes?.map(quote => (
-                    <tr key={quote.id}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{quote.vendor?.companyName}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">{formatCurrency(quote.price)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{quote.scopeOfWork}</td>
-                      <td className="px-6 py-4"><StatusBadge status={quote.status} /></td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{quote.submittedAt ? formatDate(quote.submittedAt) : '—'}</td>
-                      {isOperator && (
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {quote.publicToken && quote.status === 'Requested' && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                  const link = `${window.location.origin}/quotes/submit/${quote.publicToken}`;
-                                  navigator.clipboard.writeText(link);
-                                  toast.success('Link copied to clipboard');
-                                }}
-                              >
-                                Copy Link
-                              </Button>
-                            )}
-                            {quote.status === 'Submitted' && (
-                              <Button
-                                size="sm"
-                                onClick={() => selectQuote.mutate(quote.id)}
-                                loading={selectQuote.isPending}
-                              >
-                                Select
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <QuotesTab quotes={quotes ?? []} isOperator={isOperator} selectQuote={selectQuote} />
       )}
 
       {activeTab === 'proposal' && (

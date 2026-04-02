@@ -99,17 +99,43 @@ export interface VendorInvite {
   vendor: VendorSummary; quote?: QuoteSummary;
 }
 
+export interface QuoteLineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
 export interface Quote {
   id: string; serviceRequestId: string; vendorId: string;
   price: number; scopeOfWork: string; status: QuoteStatus;
   publicToken?: string; submittedAt?: string; vendor: VendorSummary; attachments: AttachmentDto[];
+  proposedStartDate?: string;
+  estimatedDurationValue?: number;
+  estimatedDurationUnit?: string;
+  notToExceedPrice?: number;
+  assumptions?: string;
+  exclusions?: string;
+  vendorAvailability?: string;
+  validUntil?: string;
+  lineItems: QuoteLineItem[];
+}
+
+export interface ProposalQuoteSummary extends QuoteSummary {
+  proposedStartDate?: string;
+  estimatedDurationValue?: number;
+  estimatedDurationUnit?: string;
+  notToExceedPrice?: number;
+  assumptions?: string;
+  exclusions?: string;
 }
 
 export interface Proposal {
   id: string; serviceRequestId: string; quoteId: string;
   price: number; scopeOfWork: string; status: ProposalStatus;
   publicToken?: string; sentAt?: string; clientResponse?: string; clientRespondedAt?: string;
-  serviceRequest: ServiceRequestSummary; quote: QuoteSummary;
+  serviceRequest: ServiceRequestSummary; quote: ProposalQuoteSummary;
 }
 
 export interface WorkOrder {
