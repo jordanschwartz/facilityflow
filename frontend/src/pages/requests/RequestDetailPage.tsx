@@ -21,192 +21,200 @@ import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import { formatDate, formatCurrency, formatRelativeTime } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
-import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
+
+function QuoteDetailModal({ quote, open, onClose }: { quote: Quote; open: boolean; onClose: () => void }) {
+  const hasLineItems = quote.lineItems && quote.lineItems.length > 0;
+  const hasAttachments = quote.attachments && quote.attachments.length > 0;
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Quote — ${quote.vendor?.companyName}`} size="lg">
+      <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
+
+        {/* Price */}
+        <div className="flex items-center gap-6">
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Price</p>
+            <p className="text-xl font-bold text-gray-900">{formatCurrency(quote.price)}</p>
+          </div>
+          {quote.notToExceedPrice != null && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">NTE</p>
+              <p className="text-xl font-bold text-gray-900">{formatCurrency(quote.notToExceedPrice)}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Scope */}
+        {quote.scopeOfWork && (
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Scope of Work</p>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.scopeOfWork}</p>
+          </div>
+        )}
+
+        {/* Scheduling / Meta */}
+        {(quote.proposedStartDate || quote.estimatedDurationValue != null || quote.vendorAvailability || quote.validUntil || quote.submittedAt) && (
+          <div className="grid grid-cols-2 gap-3">
+            {quote.submittedAt && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Submitted</p>
+                <p className="text-sm text-gray-700">{formatDate(quote.submittedAt)}</p>
+              </div>
+            )}
+            {quote.proposedStartDate && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Proposed Start</p>
+                <p className="text-sm text-gray-700">{formatDate(quote.proposedStartDate)}</p>
+              </div>
+            )}
+            {quote.estimatedDurationValue != null && quote.estimatedDurationUnit && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Duration</p>
+                <p className="text-sm text-gray-700">{quote.estimatedDurationValue} {quote.estimatedDurationUnit}</p>
+              </div>
+            )}
+            {quote.vendorAvailability && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Availability</p>
+                <p className="text-sm text-gray-700">{quote.vendorAvailability}</p>
+              </div>
+            )}
+            {quote.validUntil && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Valid Until</p>
+                <p className="text-sm text-gray-700">{formatDate(quote.validUntil)}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Line Items */}
+        {hasLineItems && (
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Line Items</p>
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 border-b border-gray-200">
+                  <th className="text-left font-medium pb-1 pr-4">Description</th>
+                  <th className="text-left font-medium pb-1 pr-4">Qty</th>
+                  <th className="text-left font-medium pb-1 pr-4">Unit Price</th>
+                  <th className="text-right font-medium pb-1">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quote.lineItems.map(li => (
+                  <tr key={li.id} className="border-t border-gray-100">
+                    <td className="py-1.5 pr-4 text-gray-700">{li.description}</td>
+                    <td className="py-1.5 pr-4 text-gray-700">{li.quantity}</td>
+                    <td className="py-1.5 pr-4 text-gray-700">{formatCurrency(li.unitPrice)}</td>
+                    <td className="py-1.5 text-right text-gray-900 font-medium">{formatCurrency(li.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Assumptions / Exclusions */}
+        {(quote.assumptions || quote.exclusions) && (
+          <div className="grid grid-cols-2 gap-4">
+            {quote.assumptions && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Assumptions</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.assumptions}</p>
+              </div>
+            )}
+            {quote.exclusions && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Exclusions</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.exclusions}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Attachments */}
+        {hasAttachments && (
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Attachments</p>
+            <div className="flex flex-wrap gap-2">
+              {quote.attachments.map(a => {
+                const url = `${API_BASE}${a.url}`;
+                if (a.mimeType.startsWith('image/')) {
+                  return (
+                    <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}>
+                      <img src={url} alt={a.filename} className="w-24 h-24 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
+                    </a>
+                  );
+                }
+                if (a.mimeType.startsWith('video/')) {
+                  return (
+                    <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}
+                      className="flex flex-col items-center justify-center w-24 h-24 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-gray-500 gap-1">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                      <span className="text-xs truncate w-full text-center px-1">{a.filename}</span>
+                    </a>
+                  );
+                }
+                return (
+                  <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}
+                    className="flex flex-col items-center justify-center w-24 h-24 rounded-lg border border-gray-200 bg-red-50 hover:bg-red-100 transition-colors text-red-500 gap-1">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
+                    <span className="text-xs truncate w-full text-center px-1">{a.filename}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
 
 function QuoteCard({ quote, isOperator, selectQuote }: {
   quote: Quote;
   isOperator: boolean;
   selectQuote: { mutate: (id: string) => void; isPending: boolean };
 }) {
-  const [scopeOpen, setScopeOpen] = useState(false);
-  const [lineItemsOpen, setLineItemsOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-
-  const hasLineItems = quote.lineItems && quote.lineItems.length > 0;
-  const hasDetails = !!(quote.assumptions || quote.exclusions);
-  const hasAttachments = quote.attachments && quote.attachments.length > 0;
-  const scopeTruncated = quote.scopeOfWork && quote.scopeOfWork.length > 120;
+  const [detailOpen, setDetailOpen] = useState(false);
 
   return (
-    <div className="border border-gray-200 rounded-xl bg-white shadow-sm p-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-1">
-            <span className="text-sm font-medium text-gray-900">{quote.vendor?.companyName}</span>
-            <StatusBadge status={quote.status} />
-          </div>
+    <div className="border border-gray-200 rounded-xl bg-white shadow-sm p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-sm font-medium text-gray-900">{quote.vendor?.companyName}</span>
+          <StatusBadge status={quote.status} />
+          {quote.attachments?.length > 0 && (
+            <span className="text-xs text-gray-400">{quote.attachments.length} attachment{quote.attachments.length !== 1 ? 's' : ''}</span>
+          )}
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-base font-bold text-gray-900">{formatCurrency(quote.price)}</p>
-          {quote.notToExceedPrice != null && (
-            <p className="text-xs text-gray-500">NTE: {formatCurrency(quote.notToExceedPrice)}</p>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="text-right">
+            <p className="text-sm font-bold text-gray-900">{formatCurrency(quote.price)}</p>
+            {quote.notToExceedPrice != null && (
+              <p className="text-xs text-gray-400">NTE {formatCurrency(quote.notToExceedPrice)}</p>
+            )}
+          </div>
+          {quote.submittedAt && (
+            <p className="text-xs text-gray-400 hidden sm:block">{formatDate(quote.submittedAt)}</p>
           )}
         </div>
       </div>
 
-      {/* Scope of Work */}
-      {quote.scopeOfWork && (
-        <div className="mt-2">
-          <p className="text-xs text-gray-700 whitespace-pre-wrap">
-            {scopeOpen || !scopeTruncated ? quote.scopeOfWork : `${quote.scopeOfWork.slice(0, 120)}…`}
-          </p>
-          {scopeTruncated && (
-            <button
-              type="button"
-              onClick={() => setScopeOpen(v => !v)}
-              className="mt-0.5 text-xs text-brand-600 hover:text-brand-700 font-medium"
-            >
-              {scopeOpen ? 'Show less' : 'Show more'}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Meta fields */}
-      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
-        {quote.submittedAt && (
-          <span className="text-xs text-gray-500">Submitted {formatDate(quote.submittedAt)}</span>
-        )}
-        {quote.proposedStartDate && (
-          <span className="text-xs text-gray-500">Start: {formatDate(quote.proposedStartDate)}</span>
-        )}
-        {quote.estimatedDurationValue != null && quote.estimatedDurationUnit && (
-          <span className="text-xs text-gray-500">Duration: {quote.estimatedDurationValue} {quote.estimatedDurationUnit}</span>
-        )}
-        {quote.vendorAvailability && (
-          <span className="text-xs text-gray-500">Availability: {quote.vendorAvailability}</span>
-        )}
-        {quote.validUntil && (
-          <span className="text-xs text-gray-500">Valid until: {formatDate(quote.validUntil)}</span>
-        )}
-      </div>
-
-      {/* Attachments */}
-      {hasAttachments && (
-        <div className="mt-3 border-t border-gray-100 pt-3">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Attachments ({quote.attachments.length})</p>
-          <div className="flex flex-wrap gap-2">
-            {quote.attachments.map(a => {
-              const url = `${API_BASE}${a.url}`;
-              if (a.mimeType.startsWith('image/')) {
-                return (
-                  <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}>
-                    <img src={url} alt={a.filename} className="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
-                  </a>
-                );
-              }
-              if (a.mimeType.startsWith('video/')) {
-                return (
-                  <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}
-                    className="flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-gray-500">
-                    <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    <span className="text-xs truncate w-full text-center px-1">{a.filename}</span>
-                  </a>
-                );
-              }
-              return (
-                <a key={a.id} href={url} target="_blank" rel="noopener noreferrer" title={a.filename}
-                  className="flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 bg-red-50 hover:bg-red-100 transition-colors text-red-500">
-                  <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
-                  <span className="text-xs truncate w-full text-center px-1">{a.filename}</span>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Expandable: Line Items */}
-      {hasLineItems && (
-        <div className="mt-3 border-t border-gray-100 pt-3">
-          <button
-            type="button"
-            onClick={() => setLineItemsOpen(v => !v)}
-            className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
-          >
-            {lineItemsOpen ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
-            Line Items ({quote.lineItems.length})
-          </button>
-          {lineItemsOpen && (
-            <div className="mt-2 overflow-x-auto">
-              <table className="min-w-full text-xs">
-                <thead>
-                  <tr className="text-gray-500">
-                    <th className="text-left font-medium pb-1 pr-4">Description</th>
-                    <th className="text-left font-medium pb-1 pr-4">Qty</th>
-                    <th className="text-left font-medium pb-1 pr-4">Unit Price</th>
-                    <th className="text-left font-medium pb-1">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {quote.lineItems.map(li => (
-                    <tr key={li.id} className="border-t border-gray-100">
-                      <td className="py-1 pr-4 text-gray-700">{li.description}</td>
-                      <td className="py-1 pr-4 text-gray-700">{li.quantity}</td>
-                      <td className="py-1 pr-4 text-gray-700">{formatCurrency(li.unitPrice)}</td>
-                      <td className="py-1 text-gray-900 font-medium">{formatCurrency(li.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Expandable: Assumptions / Exclusions */}
-      {hasDetails && (
-        <div className="mt-3 border-t border-gray-100 pt-3">
-          <button
-            type="button"
-            onClick={() => setDetailsOpen(v => !v)}
-            className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
-          >
-            {detailsOpen ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
-            Assumptions & Exclusions
-          </button>
-          {detailsOpen && (
-            <div className="mt-2 space-y-2">
-              {quote.assumptions && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Assumptions</p>
-                  <p className="text-xs text-gray-700 whitespace-pre-wrap">{quote.assumptions}</p>
-                </div>
-              )}
-              {quote.exclusions && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Exclusions</p>
-                  <p className="text-xs text-gray-700 whitespace-pre-wrap">{quote.exclusions}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Actions */}
       {isOperator && (
-        <div className="mt-4 flex items-center gap-2 justify-end border-t border-gray-100 pt-3">
+        <div className="mt-3 flex items-center gap-2 justify-end">
+          <Button size="sm" variant="secondary" onClick={() => setDetailOpen(true)}>
+            View
+          </Button>
           {quote.publicToken && quote.status === 'Requested' && (
             <Button
               size="sm"
               variant="secondary"
               onClick={() => {
-                const link = `${window.location.origin}/quotes/submit/${quote.publicToken}`;
-                navigator.clipboard.writeText(link);
+                navigator.clipboard.writeText(`${window.location.origin}/quotes/submit/${quote.publicToken}`);
                 toast.success('Link copied to clipboard');
               }}
             >
@@ -214,16 +222,14 @@ function QuoteCard({ quote, isOperator, selectQuote }: {
             </Button>
           )}
           {quote.status === 'Submitted' && (
-            <Button
-              size="sm"
-              onClick={() => selectQuote.mutate(quote.id)}
-              loading={selectQuote.isPending}
-            >
-              Select Quote
+            <Button size="sm" onClick={() => selectQuote.mutate(quote.id)} loading={selectQuote.isPending}>
+              Select
             </Button>
           )}
         </div>
       )}
+
+      <QuoteDetailModal quote={quote} open={detailOpen} onClose={() => setDetailOpen(false)} />
     </div>
   );
 }
