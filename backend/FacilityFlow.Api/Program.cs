@@ -155,6 +155,9 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ---- Health Check ----
+app.MapGet("/", () => Results.Ok(new { status = "healthy" }));
+
 // ---- Controllers ----
 app.MapControllers();
 
