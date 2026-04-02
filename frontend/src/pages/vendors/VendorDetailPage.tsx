@@ -17,7 +17,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityBadge from '../../components/ui/PriorityBadge';
 import EmptyState from '../../components/ui/EmptyState';
 import { formatDate, formatCurrency } from '../../utils/formatters';
-import { XMarkIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PencilIcon, TrashIcon, ArrowUpCircleIcon } from '@heroicons/react/24/outline';
 
 const editSchema = z.object({
   companyName: z.string().min(2, 'Company name required'),
@@ -157,6 +157,16 @@ export default function VendorDetailPage() {
     onError: () => toast.error('Failed to update DNU status'),
   });
 
+  const promoteMutation = useMutation({
+    mutationFn: () => vendorsApi.promote(id!),
+    onSuccess: () => {
+      toast.success('Vendor promoted to active');
+      queryClient.invalidateQueries({ queryKey: ['vendors', id] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    },
+    onError: () => toast.error('Failed to promote vendor'),
+  });
+
   const createNoteMutation = useMutation({
     mutationFn: () =>
       vendorsApi.createVendorNote(
@@ -244,16 +254,21 @@ export default function VendorDetailPage() {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-gray-900">{vendor.companyName}</h1>
+              {vendor.status === 'Prospect' && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-violet-100 text-violet-700 border border-violet-200">
+                  Prospect
+                </span>
+              )}
               {vendor.isDnu && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800 border border-red-200">
                   DO NOT USE
                 </span>
               )}
-              {vendor.isActive ? (
+              {vendor.status !== 'Prospect' && (vendor.isActive ? (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
               ) : (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
-              )}
+              ))}
             </div>
             <div className="mt-2 space-y-0.5">
               <p className="text-sm text-gray-700 font-medium">{vendor.primaryContactName}</p>
@@ -269,6 +284,15 @@ export default function VendorDetailPage() {
           <div className="flex items-center gap-2">
             {!editing ? (
               <>
+                {vendor.status === 'Prospect' && (
+                  <Button
+                    size="sm"
+                    loading={promoteMutation.isPending}
+                    onClick={() => promoteMutation.mutate()}
+                  >
+                    <ArrowUpCircleIcon className="w-4 h-4 mr-1" /> Promote to Active
+                  </Button>
+                )}
                 <Button
                   variant={vendor.isDnu ? 'secondary' : 'danger'}
                   size="sm"
@@ -313,7 +337,19 @@ export default function VendorDetailPage() {
                 {vendor.rating != null && (
                   <div>
                     <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{vendor.rating.toFixed(1)} / 5.0</dd>
+                    <dd className="mt-1 text-sm text-gray-900">{vendor.rating.toFixed(1)} / 5.0{vendor.reviewCount != null && <span className="text-gray-500"> ({vendor.reviewCount} reviews)</span>}</dd>
+                  </div>
+                )}
+                {vendor.website && (
+                  <div>
+                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Website</dt>
+                    <dd className="mt-1 text-sm"><a href={vendor.website} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700">{vendor.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</a></dd>
+                  </div>
+                )}
+                {vendor.googleProfileUrl && (
+                  <div>
+                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Google Profile</dt>
+                    <dd className="mt-1 text-sm"><a href={vendor.googleProfileUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700">View on Google →</a></dd>
                   </div>
                 )}
               </dl>
@@ -480,8 +516,8 @@ export default function VendorDetailPage() {
             )}
           </div>
 
-          {/* Job History */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          {/* Job History — hidden for prospects */}
+          {vendor.status !== 'Prospect' && <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-4">Job History</h2>
             {(requests?.items ?? []).length === 0 ? (
               <p className="text-sm text-gray-500">No service requests associated with this vendor</p>
@@ -501,10 +537,10 @@ export default function VendorDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </div>}
 
-          {/* Payment History */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          {/* Payment History — hidden for prospects */}
+          {vendor.status !== 'Prospect' && <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-gray-900">Payment History</h2>
               {!showPaymentForm && !editingPayment && (
@@ -663,7 +699,7 @@ export default function VendorDetailPage() {
                 )}
               </>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Right sidebar */}
@@ -695,6 +731,12 @@ export default function VendorDetailPage() {
                 <div>
                   <dt className="text-xs text-gray-500">Rating</dt>
                   <dd className="text-sm text-gray-900">{vendor.rating.toFixed(1)} / 5.0</dd>
+                </div>
+              )}
+              {vendor.googleProfileUrl && (
+                <div>
+                  <dt className="text-xs text-gray-500">Google</dt>
+                  <dd className="text-sm"><a href={vendor.googleProfileUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700">View on Google →</a></dd>
                 </div>
               )}
             </dl>

@@ -17,4 +17,8 @@ public record VendorDto(
     bool IsActive,
     bool IsDnu,
     string? DnuReason,
+    string Status,
+    string? Website,
+    int? ReviewCount,
+    string? GoogleProfileUrl,
     UserDto? User);

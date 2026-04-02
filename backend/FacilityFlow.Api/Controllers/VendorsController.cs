@@ -82,6 +82,38 @@ public class VendorsController : ControllerBase
         return Ok(result);
     }
 
+    // ── Vendor Discovery ─────────────────────────────────────────────────────
+
+    [HttpGet("discover")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> Discover(
+        [FromQuery] string trade,
+        [FromQuery] string zip,
+        [FromQuery] int radiusMiles = 25)
+    {
+        if (string.IsNullOrWhiteSpace(trade) || string.IsNullOrWhiteSpace(zip))
+            return BadRequest(new { error = "trade and zip are required." });
+
+        var result = await _mediator.Send(new DiscoverVendorsQuery(trade, zip, radiusMiles));
+        return Ok(result);
+    }
+
+    [HttpPost("prospects")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> AddProspect([FromBody] AddProspectVendorRequest req)
+    {
+        var result = await _mediator.Send(new AddProspectVendorCommand(req));
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPost("{id:guid}/promote")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> Promote(Guid id)
+    {
+        var result = await _mediator.Send(new PromoteVendorCommand(id));
+        return Ok(result);
+    }
+
     // ── Notes ─────────────────────────────────────────────────────────────────
 
     [HttpGet("{id:guid}/notes")]

@@ -5,6 +5,18 @@ export type QuoteStatus = 'Requested' | 'Submitted' | 'Reviewed' | 'Selected' | 
 export type ProposalStatus = 'Draft' | 'Sent' | 'Viewed' | 'Approved' | 'Rejected' | 'Revised';
 export type WorkOrderStatus = 'Assigned' | 'InProgress' | 'Completed' | 'Closed';
 export type VendorInviteStatus = 'Invited' | 'Viewed' | 'Quoted' | 'Declined';
+export type VendorStatus = 'Active' | 'Inactive' | 'Dnu' | 'Prospect';
+
+export interface DiscoveredVendor {
+  businessName: string;
+  address: string;
+  phone?: string;
+  website?: string;
+  rating?: number;
+  reviewCount?: number;
+  googleProfileUrl?: string;
+  existingVendorId?: string;
+}
 
 export interface AuthUser {
   id: string;
@@ -22,7 +34,7 @@ export interface PagedResult<T> {
 }
 
 export interface ClientSummary { id: string; companyName: string; phone?: string; }
-export interface VendorSummary { id: string; companyName: string; trades: string[]; rating?: number; isDnu?: boolean; isActive?: boolean; }
+export interface VendorSummary { id: string; companyName: string; trades: string[]; rating?: number; isDnu?: boolean; isActive?: boolean; status?: VendorStatus; }
 export interface AttachmentDto { id: string; url: string; filename: string; mimeType: string; }
 export interface QuoteSummary { id: string; status: QuoteStatus; price?: number; submittedAt?: string; }
 
@@ -57,6 +69,7 @@ export interface Vendor {
   isActive: boolean;
   isDnu: boolean;
   dnuReason?: string;
+  status?: VendorStatus;
   user?: AuthUser;
 }
 

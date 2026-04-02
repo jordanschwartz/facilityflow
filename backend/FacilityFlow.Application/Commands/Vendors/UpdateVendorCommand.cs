@@ -54,5 +54,9 @@ public class UpdateVendorCommandHandler : IRequestHandler<UpdateVendorCommand, V
         v.IsActive,
         v.IsDnu,
         v.DnuReason,
+        v.Status.ToString(),
+        v.Website,
+        v.ReviewCount,
+        v.GoogleProfileUrl,
         v.User?.Adapt<UserDto>());
 }

@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { vendorsApi } from '../../api/vendors';
-import type { VendorSourcingResult } from '../../types';
+import type { VendorSourcingResult, DiscoveredVendor } from '../../types';
 import Modal from '../ui/Modal';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import Button from '../ui/Button';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/solid';
+import toast from 'react-hot-toast';
+import { ExclamationTriangleIcon, StarIcon as StarOutlineIcon, MapPinIcon, PhoneIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
+import { StarIcon as StarSolidIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
 import { formatDate } from '../../utils/formatters';
+import { Link } from 'react-router-dom';
 
 interface FindVendorsModalProps {
   isOpen: boolean;
@@ -16,6 +19,20 @@ interface FindVendorsModalProps {
   onSelectVendor: (vendor: VendorSourcingResult) => void;
 }
 
+const TRADE_OPTIONS = [
+  'HVAC', 'Electrical', 'Plumbing', 'Roofing', 'General Maintenance',
+  'Painting', 'Landscaping', 'Fire Protection', 'Elevator', 'Security',
+];
+
+const RADIUS_OPTIONS = [
+  { label: '10 miles', value: 10 },
+  { label: '25 miles', value: 25 },
+  { label: '50 miles', value: 50 },
+  { label: '100 miles', value: 100 },
+];
+
+type Tab = 'local' | 'discover';
+
 export default function FindVendorsModal({
   isOpen,
   onClose,
@@ -23,6 +40,64 @@ export default function FindVendorsModal({
   requiredTrade,
   onSelectVendor,
 }: FindVendorsModalProps) {
+  const [activeTab, setActiveTab] = useState<Tab>('local');
+
+  return (
+    <Modal open={isOpen} onClose={onClose} title="Find Vendors" size="lg">
+      {/* Tab bar */}
+      <div className="flex border-b border-gray-200 mb-4 -mt-1">
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'local'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+          onClick={() => setActiveTab('local')}
+        >
+          Your Vendors
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'discover'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+          onClick={() => setActiveTab('discover')}
+        >
+          Discover New
+        </button>
+      </div>
+
+      {activeTab === 'local' ? (
+        <LocalVendorsTab
+          serviceRequestZip={serviceRequestZip}
+          requiredTrade={requiredTrade}
+          onSelectVendor={onSelectVendor}
+          isOpen={isOpen}
+        />
+      ) : (
+        <DiscoverVendorsTab
+          serviceRequestZip={serviceRequestZip}
+          requiredTrade={requiredTrade}
+        />
+      )}
+    </Modal>
+  );
+}
+
+/* ─── Local Vendors Tab (existing functionality) ─── */
+
+function LocalVendorsTab({
+  serviceRequestZip,
+  requiredTrade,
+  onSelectVendor,
+  isOpen,
+}: {
+  serviceRequestZip: string;
+  requiredTrade?: string;
+  onSelectVendor: (vendor: VendorSourcingResult) => void;
+  isOpen: boolean;
+}) {
   const [tradeFilter, setTradeFilter] = useState(requiredTrade ?? '');
   const [radiusOverride, setRadiusOverride] = useState('');
 
@@ -38,61 +113,59 @@ export default function FindVendorsModal({
   });
 
   return (
-    <Modal open={isOpen} onClose={onClose} title="Find Vendors" size="lg">
-      <div className="space-y-4">
-        {/* Filter controls */}
-        <div className="flex gap-3">
+    <div className="space-y-4">
+      {/* Filter controls */}
+      <div className="flex gap-3">
+        <input
+          type="text"
+          placeholder="Filter by trade..."
+          value={tradeFilter}
+          onChange={e => setTradeFilter(e.target.value)}
+          className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+        />
+        <div className="relative">
           <input
-            type="text"
-            placeholder="Filter by trade..."
-            value={tradeFilter}
-            onChange={e => setTradeFilter(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+            type="number"
+            placeholder="Radius (mi)"
+            value={radiusOverride}
+            onChange={e => setRadiusOverride(e.target.value)}
+            min={1}
+            max={500}
+            className="w-32 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
           />
-          <div className="relative">
-            <input
-              type="number"
-              placeholder="Radius (mi)"
-              value={radiusOverride}
-              onChange={e => setRadiusOverride(e.target.value)}
-              min={1}
-              max={500}
-              className="w-32 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
-            />
-          </div>
-        </div>
-
-        <p className="text-xs text-gray-500">
-          Searching near ZIP <span className="font-medium text-gray-700">{serviceRequestZip}</span>
-          {tradeFilter && <> for <span className="font-medium text-gray-700">{tradeFilter}</span></>}
-        </p>
-
-        {/* Results */}
-        <div className="max-h-[480px] overflow-y-auto space-y-3 pr-1">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <LoadingSpinner />
-            </div>
-          ) : (vendors ?? []).length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-center">
-              <p className="text-sm text-gray-500">No vendors found for this area and trade.</p>
-            </div>
-          ) : (
-            vendors?.map(vendor => (
-              <VendorCard
-                key={vendor.vendorId}
-                vendor={vendor}
-                onSelect={onSelectVendor}
-              />
-            ))
-          )}
         </div>
       </div>
-    </Modal>
+
+      <p className="text-xs text-gray-500">
+        Searching near ZIP <span className="font-medium text-gray-700">{serviceRequestZip}</span>
+        {tradeFilter && <> for <span className="font-medium text-gray-700">{tradeFilter}</span></>}
+      </p>
+
+      {/* Results */}
+      <div className="max-h-[480px] overflow-y-auto space-y-3 pr-1">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <LoadingSpinner />
+          </div>
+        ) : (vendors ?? []).length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-center">
+            <p className="text-sm text-gray-500">No vendors found for this area and trade.</p>
+          </div>
+        ) : (
+          vendors?.map(vendor => (
+            <LocalVendorCard
+              key={vendor.vendorId}
+              vendor={vendor}
+              onSelect={onSelectVendor}
+            />
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
-function VendorCard({
+function LocalVendorCard({
   vendor,
   onSelect,
 }: {
@@ -151,6 +224,299 @@ function VendorCard({
           ) : (
             <Button size="sm" onClick={() => onSelect(vendor)}>
               Select
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Standalone Source Vendors Modal ─── */
+
+export function SourceVendorsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <Modal open={isOpen} onClose={onClose} title="Source New Vendors" size="lg">
+      <DiscoverVendorsTab serviceRequestZip="" />
+    </Modal>
+  );
+}
+
+/* ─── Discover New Vendors Tab ─── */
+
+function DiscoverVendorsTab({
+  serviceRequestZip,
+  requiredTrade,
+}: {
+  serviceRequestZip: string;
+  requiredTrade?: string;
+}) {
+  const queryClient = useQueryClient();
+  const [trade, setTrade] = useState(requiredTrade ?? '');
+  const [zip, setZip] = useState(serviceRequestZip);
+  const [radius, setRadius] = useState(25);
+  const [searchTriggered, setSearchTriggered] = useState(false);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+  const { data: results, isFetching, isError, refetch } = useQuery({
+    queryKey: ['vendors', 'discover', trade, zip, radius],
+    queryFn: () => vendorsApi.discover({ trade, zip, radiusMiles: radius }).then(r => r.data),
+    enabled: false,
+  });
+
+  const handleSearch = () => {
+    setSearchTriggered(true);
+    refetch();
+  };
+
+  const addProspectMutation = useMutation({
+    mutationFn: (vendor: DiscoveredVendor) => {
+      // Extract ZIP from address or fall back to search ZIP
+      const zipMatch = vendor.address.match(/\b\d{5}\b/);
+      const vendorZip = zipMatch ? zipMatch[0] : zip;
+
+      return vendorsApi.addProspect({
+        companyName: vendor.businessName,
+        phone: vendor.phone,
+        primaryZip: vendorZip,
+        website: vendor.website,
+        rating: vendor.rating,
+        reviewCount: vendor.reviewCount,
+        googleProfileUrl: vendor.googleProfileUrl,
+        trades: trade ? [trade] : undefined,
+      });
+    },
+    onSuccess: (_data, vendor) => {
+      toast.success('Vendor added as prospect');
+      setAddedIds(prev => new Set(prev).add(vendor.businessName));
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.response?.data || 'Failed to add prospect';
+      toast.error(typeof message === 'string' ? message : 'Failed to add prospect');
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Search form */}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex-1 min-w-[160px]">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Trade / Specialty</label>
+          <input
+            type="text"
+            list="trade-options"
+            value={trade}
+            onChange={e => setTrade(e.target.value)}
+            placeholder="e.g. HVAC, Electrical, Locksmith..."
+            className="block w-full border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+          />
+          <datalist id="trade-options">
+            {TRADE_OPTIONS.map(t => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
+        </div>
+        <div className="w-28">
+          <label className="block text-xs font-medium text-gray-700 mb-1">ZIP Code</label>
+          <input
+            type="text"
+            value={zip}
+            onChange={e => setZip(e.target.value)}
+            maxLength={5}
+            className="block w-full border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+          />
+        </div>
+        <div className="w-32">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Radius</label>
+          <select
+            value={radius}
+            onChange={e => setRadius(Number(e.target.value))}
+            className="block w-full border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+          >
+            {RADIUS_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-end">
+          <Button onClick={handleSearch} disabled={!trade || !zip} loading={isFetching}>
+            Search
+          </Button>
+        </div>
+      </div>
+
+      {/* Results */}
+      <div className="max-h-[420px] overflow-y-auto space-y-3 pr-1">
+        {isFetching ? (
+          /* Skeleton loading cards */
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="rounded-lg border border-gray-200 p-4 animate-pulse">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-2/3" />
+                    <div className="h-3 bg-gray-200 rounded w-1/3" />
+                    <div className="h-3 bg-gray-200 rounded w-full" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  </div>
+                  <div className="h-8 w-28 bg-gray-200 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex items-center justify-center h-32 text-center">
+            <p className="text-sm text-red-600">Search failed. Please try again.</p>
+          </div>
+        ) : searchTriggered && (results ?? []).length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-center">
+            <p className="text-sm text-gray-500">No vendors found. Try adjusting your search criteria.</p>
+          </div>
+        ) : !searchTriggered ? (
+          <div className="flex items-center justify-center h-32 text-center">
+            <p className="text-sm text-gray-500">Select a trade and ZIP code, then click Search to discover vendors.</p>
+          </div>
+        ) : (
+          results?.map((vendor, idx) => (
+            <DiscoveredVendorCard
+              key={`${vendor.businessName}-${idx}`}
+              vendor={vendor}
+              isAdded={addedIds.has(vendor.businessName) || !!vendor.existingVendorId}
+              isAdding={addProspectMutation.isPending && addProspectMutation.variables?.businessName === vendor.businessName}
+              onAdd={() => addProspectMutation.mutate(vendor)}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DiscoveredVendorCard({
+  vendor,
+  isAdded,
+  isAdding,
+  onAdd,
+}: {
+  vendor: DiscoveredVendor;
+  isAdded: boolean;
+  isAdding: boolean;
+  onAdd: () => void;
+}) {
+  const truncateUrl = (url: string) => {
+    try {
+      return new URL(url).hostname.replace('www.', '');
+    } catch {
+      return url;
+    }
+  };
+
+  const renderStars = (rating: number) => {
+    const full = Math.floor(rating);
+    const hasHalf = rating - full >= 0.25;
+    return (
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map(i => (
+          i <= full
+            ? <StarSolidIcon key={i} className="w-3.5 h-3.5 text-yellow-400" />
+            : i === full + 1 && hasHalf
+              ? <StarSolidIcon key={i} className="w-3.5 h-3.5 text-yellow-300" />
+              : <StarOutlineIcon key={i} className="w-3.5 h-3.5 text-gray-300" />
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white hover:bg-gray-50 p-4 transition-colors">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900">{vendor.businessName}</p>
+
+          {/* Rating */}
+          {vendor.rating != null && (
+            <div className="flex items-center gap-1.5 mt-1">
+              {renderStars(vendor.rating)}
+              <span className="text-xs font-medium text-gray-700">{vendor.rating.toFixed(1)}</span>
+              {vendor.reviewCount != null && (
+                <span className="text-xs text-gray-500">({vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'})</span>
+              )}
+            </div>
+          )}
+
+          {/* Address */}
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <MapPinIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <p className="text-xs text-gray-600">{vendor.address}</p>
+          </div>
+
+          {/* Phone */}
+          {vendor.phone && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <PhoneIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <a
+                href={`tel:${vendor.phone}`}
+                className="text-xs text-brand-600 hover:text-brand-700"
+                onClick={e => e.stopPropagation()}
+              >
+                {vendor.phone}
+              </a>
+            </div>
+          )}
+
+          {/* Website */}
+          {vendor.website && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <GlobeAltIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <a
+                href={vendor.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-brand-600 hover:text-brand-700"
+                onClick={e => e.stopPropagation()}
+              >
+                {truncateUrl(vendor.website)}
+              </a>
+            </div>
+          )}
+
+          {/* Google profile link */}
+          {vendor.googleProfileUrl && (
+            <a
+              href={vendor.googleProfileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-1.5 text-xs text-gray-500 hover:text-gray-700 underline"
+              onClick={e => e.stopPropagation()}
+            >
+              View on Google
+            </a>
+          )}
+        </div>
+
+        <div className="flex-shrink-0 flex flex-col items-end gap-2">
+          {vendor.existingVendorId ? (
+            <>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                Already in system
+              </span>
+              <Link
+                to={`/vendors/${vendor.existingVendorId}`}
+                className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                onClick={e => e.stopPropagation()}
+              >
+                View vendor
+              </Link>
+            </>
+          ) : isAdded ? (
+            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-green-700 bg-green-50 border border-green-200">
+              <CheckCircleIcon className="w-4 h-4" />
+              Added
+            </span>
+          ) : (
+            <Button size="sm" onClick={onAdd} loading={isAdding}>
+              Add as Prospect
             </Button>
           )}
         </div>

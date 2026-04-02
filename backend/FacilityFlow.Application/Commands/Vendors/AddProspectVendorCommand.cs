@@ -1,6 +1,7 @@
 using FacilityFlow.Application.DTOs.Vendors;
 using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Interfaces.Repositories;
 using Mapster;
 using MediatR;
@@ -8,45 +9,44 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FacilityFlow.Application.Commands.Vendors;
 
-public record CreateVendorCommand(CreateVendorRequest Request) : IRequest<VendorDto>;
+public record AddProspectVendorCommand(AddProspectVendorRequest Request) : IRequest<VendorDto>;
 
-public class CreateVendorCommandHandler : IRequestHandler<CreateVendorCommand, VendorDto>
+public class AddProspectVendorCommandHandler : IRequestHandler<AddProspectVendorCommand, VendorDto>
 {
     private readonly IRepository<Vendor> _repo;
 
-    public CreateVendorCommandHandler(IRepository<Vendor> repo) => _repo = repo;
+    public AddProspectVendorCommandHandler(IRepository<Vendor> repo) => _repo = repo;
 
-    public async Task<VendorDto> Handle(CreateVendorCommand request, CancellationToken cancellationToken)
+    public async Task<VendorDto> Handle(AddProspectVendorCommand request, CancellationToken cancellationToken)
     {
         var req = request.Request;
+
+        var duplicate = await _repo.Query()
+            .AnyAsync(v => v.CompanyName.ToLower() == req.CompanyName.ToLower(), cancellationToken);
+
+        if (duplicate)
+            throw new InvalidOperationException($"A vendor with the name '{req.CompanyName}' already exists.");
 
         var vendor = new Vendor
         {
             Id = Guid.NewGuid(),
-            UserId = req.UserId,
             CompanyName = req.CompanyName,
-            PrimaryContactName = req.PrimaryContactName,
-            Email = req.Email,
+            PrimaryContactName = req.PrimaryContactName ?? string.Empty,
+            Email = req.Email ?? string.Empty,
             Phone = req.Phone ?? string.Empty,
             PrimaryZip = req.PrimaryZip.Trim(),
-            ServiceRadiusMiles = req.ServiceRadiusMiles,
             Trades = req.Trades ?? [],
-            ZipCodes = req.ZipCodes ?? [],
-            IsActive = req.IsActive,
-            IsDnu = req.IsDnu,
-            DnuReason = req.DnuReason
+            Status = VendorStatus.Prospect,
+            IsActive = true,
+            IsDnu = false,
+            Rating = req.Rating,
+            ReviewCount = req.ReviewCount,
+            Website = req.Website,
+            GoogleProfileUrl = req.GoogleProfileUrl
         };
 
         _repo.Add(vendor);
         await _repo.SaveChangesAsync();
-
-        // Reload with User nav if UserId provided
-        if (vendor.UserId.HasValue)
-        {
-            vendor = await _repo.Query()
-                .Include(v => v.User)
-                .FirstAsync(v => v.Id == vendor.Id, cancellationToken);
-        }
 
         return ToDto(vendor);
     }

@@ -1,3 +1,5 @@
+using FacilityFlow.Core.Enums;
+
 namespace FacilityFlow.Core.Entities;
 
 public class Vendor
@@ -16,6 +18,10 @@ public class Vendor
     public bool IsActive { get; set; } = true;
     public bool IsDnu { get; set; } = false;
     public string? DnuReason { get; set; }
+    public VendorStatus Status { get; set; } = VendorStatus.Active;
+    public string? Website { get; set; }
+    public int? ReviewCount { get; set; }
+    public string? GoogleProfileUrl { get; set; }
     public User? User { get; set; }
     public ICollection<VendorInvite> Invites { get; set; } = new List<VendorInvite>();
     public ICollection<Quote> Quotes { get; set; } = new List<Quote>();

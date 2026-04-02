@@ -32,12 +32,16 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 
+        // Caching
+        services.AddMemoryCache();
+
         // Infrastructure services
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IFileStorageService, FileStorageService>();
         services.AddHttpClient<IAiSummaryService, AiSummaryService>();
+        services.AddHttpClient<IVendorDiscoveryService, GeminiVendorDiscoveryService>();
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IActivityLogger, ActivityLogger>();
 

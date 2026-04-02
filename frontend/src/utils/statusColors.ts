@@ -33,6 +33,8 @@ export const statusColors: Record<string, string> = {
   Completed: 'bg-emerald-100 text-emerald-700',
   // Invoice
   Paid: 'bg-green-100 text-green-700',
+  // Vendor
+  Prospect: 'bg-violet-100 text-violet-700',
   // Shared
   Approved: 'bg-green-100 text-green-700',
   Rejected: 'bg-red-100 text-red-700',

@@ -42,6 +42,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<VendorPayment>().Property(vp => vp.Status).HasConversion<string>();
         modelBuilder.Entity<Invoice>().Property(i => i.Status).HasConversion<string>();
         modelBuilder.Entity<ActivityLog>().Property(a => a.Category).HasConversion<string>();
+        modelBuilder.Entity<Vendor>().Property(v => v.Status).HasConversion<string>();
 
         // JSON columns for Vendor arrays
         modelBuilder.Entity<Vendor>().Property(v => v.Trades).HasColumnType("jsonb");

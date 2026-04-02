@@ -6,6 +6,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
+import { SourceVendorsModal } from '../../components/vendors/FindVendorsModal';
 import { MagnifyingGlassIcon, StarIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
@@ -14,18 +15,19 @@ export default function VendorListPage() {
   const [search, setSearch] = useState('');
   const [trade, setTrade] = useState('');
   const [zip, setZip] = useState('');
-  const [activeOnly, setActiveOnly] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('Active');
   const [hideDnu, setHideDnu] = useState(true);
   const [page, setPage] = useState(1);
+  const [discoverOpen, setDiscoverOpen] = useState(false);
   const pageSize = 20;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['vendors', { search, trade, zip, activeOnly, hideDnu, page }],
+    queryKey: ['vendors', { search, trade, zip, statusFilter, hideDnu, page }],
     queryFn: () => vendorsApi.list({
       search: search || undefined,
       trade: trade || undefined,
       zip: zip || undefined,
-      activeOnly,
+      activeOnly: statusFilter === 'Active' ? true : undefined,
       hideDnu,
       page,
       pageSize,
@@ -55,7 +57,12 @@ export default function VendorListPage() {
       <PageHeader
         title="Vendors"
         subtitle={`${totalCount} vendors`}
-        actions={<Button onClick={() => navigate('/vendors/new')}>+ New Vendor</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setDiscoverOpen(true)}>Source New Vendors</Button>
+            <Button onClick={() => navigate('/vendors/new')}>+ New Vendor</Button>
+          </div>
+        }
       />
 
       {/* Filters */}
@@ -84,15 +91,17 @@ export default function VendorListPage() {
           onChange={e => { setZip(e.target.value); setPage(1); }}
           className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500 w-32"
         />
-        <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
-          <input
-            type="checkbox"
-            checked={activeOnly}
-            onChange={e => { setActiveOnly(e.target.checked); setPage(1); }}
-            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-          />
-          Active only
-        </label>
+        <select
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+          className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
+        >
+          <option value="All">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Prospect">Prospect</option>
+          <option value="Inactive">Inactive</option>
+          <option value="Dnu">Do Not Use</option>
+        </select>
         <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
           <input
             type="checkbox"
@@ -134,12 +143,17 @@ export default function VendorListPage() {
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium text-gray-900">{vendor.companyName}</p>
+                      {vendor.status === 'Prospect' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200">
+                          Prospect
+                        </span>
+                      )}
                       {vendor.isDnu && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
                           DNU
                         </span>
                       )}
-                      {!vendor.isActive && (
+                      {!vendor.isActive && vendor.status !== 'Prospect' && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
                           Inactive
                         </span>
@@ -187,6 +201,7 @@ export default function VendorListPage() {
           </div>
         </div>
       )}
+      <SourceVendorsModal isOpen={discoverOpen} onClose={() => setDiscoverOpen(false)} />
     </div>
   );
 }

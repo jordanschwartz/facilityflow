@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { Vendor, PagedResult, VendorNote, VendorPayment, VendorSourcingResult } from '../types';
+import type { Vendor, PagedResult, VendorNote, VendorPayment, VendorSourcingResult, DiscoveredVendor } from '../types';
 
 export const vendorsApi = {
   list: (params?: { trade?: string; zip?: string; search?: string; page?: number; pageSize?: number; activeOnly?: boolean; hideDnu?: boolean }) =>
@@ -48,4 +48,12 @@ export const vendorsApi = {
   // Sourcing
   getNearbyVendors: (zip: string, radiusMiles?: number, trade?: string) =>
     apiClient.get<VendorSourcingResult[]>('/vendors/nearby', { params: { zip, radiusMiles, trade } }),
+
+  // Discovery
+  discover: (params: { trade: string; zip: string; radiusMiles?: number }) =>
+    apiClient.get<DiscoveredVendor[]>('/vendors/discover', { params }),
+  addProspect: (data: { companyName: string; primaryContactName?: string; email?: string; phone?: string; primaryZip: string; website?: string; rating?: number; reviewCount?: number; googleProfileUrl?: string; trades?: string[] }) =>
+    apiClient.post<Vendor>('/vendors/prospects', data),
+  promote: (id: string) =>
+    apiClient.post<Vendor>(`/vendors/${id}/promote`),
 };
