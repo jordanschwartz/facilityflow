@@ -107,7 +107,7 @@ public class VendorsController : ControllerBase
             PrimaryZip = req.PrimaryZip.Trim(),
             ServiceRadiusMiles = req.ServiceRadiusMiles,
             Trades = req.Trades,
-            ZipCodes = req.ZipCodes,
+            ZipCodes = req.ZipCodes ?? [],
             IsActive = req.IsActive,
             IsDnu = req.IsDnu,
             DnuReason = req.DnuReason
