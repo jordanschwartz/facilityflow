@@ -317,7 +317,7 @@ export default function RequestDetailPage() {
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
           {sr.workOrderNumber && (
-            <span className="inline-block mb-2 px-3 py-1 bg-gray-900 text-white text-xs font-mono font-semibold rounded tracking-wide">
+            <span className="inline-block mb-2 px-4 py-1.5 bg-gray-900 text-white text-sm font-mono font-semibold rounded-md tracking-wide">
               {sr.workOrderNumber}
             </span>
           )}
