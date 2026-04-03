@@ -107,9 +107,9 @@ function LocalVendorsTab({
     return match ? match[1] : '';
   };
 
-  const [tradeFilter, setTradeFilter] = useState(requiredTrade ?? '');
+  const [tradeFilter, setTradeFilter] = useState('');
   const [nameSearch, setNameSearch] = useState('');
-  const [zip, setZip] = useState(extractZip(serviceRequestZip));
+  const [zip, setZip] = useState('');
   const [radius, setRadius] = useState(25);
 
   const { data: vendors, isLoading } = useQuery({
