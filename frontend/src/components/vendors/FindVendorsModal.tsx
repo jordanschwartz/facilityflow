@@ -32,6 +32,12 @@ const RADIUS_OPTIONS = [
   { label: '100 miles', value: 100 },
 ];
 
+// Extract just the zip code from a location string, or leave blank
+const extractZip = (location: string) => {
+  const match = location.match(/\b(\d{5})\b/);
+  return match ? match[1] : '';
+};
+
 type Tab = 'local' | 'discover';
 
 export default function FindVendorsModal({
@@ -101,11 +107,6 @@ function LocalVendorsTab({
   isOpen: boolean;
 }) {
   const queryClient = useQueryClient();
-  // Extract just the zip code from the location string, or leave blank
-  const extractZip = (location: string) => {
-    const match = location.match(/\b(\d{5})\b/);
-    return match ? match[1] : '';
-  };
 
   const [tradeFilter, setTradeFilter] = useState('');
   const [nameSearch, setNameSearch] = useState('');
@@ -329,7 +330,7 @@ function DiscoverVendorsTab({
 }) {
   const queryClient = useQueryClient();
   const [trade, setTrade] = useState(requiredTrade ?? '');
-  const [zip, setZip] = useState(serviceRequestZip);
+  const [zip, setZip] = useState(extractZip(serviceRequestZip));
   const [radius, setRadius] = useState(25);
   const [searchTriggered, setSearchTriggered] = useState(false);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
