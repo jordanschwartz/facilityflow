@@ -22,14 +22,19 @@ public class ActivityLogger : IActivityLogger
 
     public async Task LogAsync(Guid serviceRequestId, Guid? workOrderId, string action, ActivityLogCategory category, string actorName, Guid? actorId)
     {
-        // Auto-resolve actor from HTTP context when not explicitly provided
-        if (actorId == null && string.IsNullOrEmpty(actorName))
+        // Auto-resolve actor from HTTP context or provided actorId
+        if (string.IsNullOrEmpty(actorName))
         {
-            var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && Guid.TryParse(userIdClaim, out var userId))
+            if (actorId == null)
             {
-                actorId = userId;
-                var user = await _users.GetByIdAsync(userId);
+                var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && Guid.TryParse(userIdClaim, out var userId))
+                    actorId = userId;
+            }
+
+            if (actorId != null)
+            {
+                var user = await _users.GetByIdAsync(actorId.Value);
                 actorName = user?.Name ?? "Unknown";
             }
             else

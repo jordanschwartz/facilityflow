@@ -81,7 +81,7 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
         await _activityLogger.LogAsync(
             sr.Id, null,
             "Created work order",
-            ActivityLogCategory.System, string.Empty, null);
+            ActivityLogCategory.System, string.Empty, command.UserId);
 
         var result = await _serviceRequests.GetWithDetailsAsync(sr.Id);
 
