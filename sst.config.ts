@@ -9,7 +9,7 @@ export default $config({
       home: "aws",
       providers: {
         aws: {
-          profile: "oncall",
+          ...(process.env.CI ? {} : { profile: "oncall" }),
         },
       },
     };
@@ -25,7 +25,10 @@ export default $config({
     // ---- ACM Certificates (manual DNS validation via Namecheap) ----
 
     // Certificate for frontend (CloudFront requires us-east-1)
-    const usEast1 = new aws.Provider("UsEast1", { region: "us-east-1", profile: "oncall" });
+    const usEast1 = new aws.Provider("UsEast1", {
+      region: "us-east-1",
+      ...(process.env.CI ? {} : { profile: "oncall" }),
+    });
     const frontendCert = new aws.acm.Certificate(
       "FrontendCert",
       {
