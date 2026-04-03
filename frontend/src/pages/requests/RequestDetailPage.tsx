@@ -317,31 +317,32 @@ export default function RequestDetailPage() {
 
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
-          {sr.workOrderNumber && (
-            <span className="inline-flex items-center gap-2 mb-1 text-gray-500 text-sm font-mono font-medium tracking-wide">
-              {sr.workOrderNumber}
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(sr.workOrderNumber!);
-                  toast.success('Copied to clipboard');
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Copy work order number"
-              >
-                <ClipboardDocumentIcon className="w-4 h-4" />
-              </button>
-            </span>
-          )}
-          <h1 className="text-2xl font-bold text-gray-900 truncate">
-            {sr.title}
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold text-gray-900 truncate">
+              {sr.title}
+            </h1>
+            {sr.workOrderNumber && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-gray-300 rounded-md text-sm font-mono text-gray-600 whitespace-nowrap">
+                <span className="text-gray-400">#</span>
+                {sr.workOrderNumber}
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(sr.workOrderNumber!);
+                    toast.success('Copied to clipboard');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Copy work order number"
+                >
+                  <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <span className="text-sm text-gray-500">{sr.client?.companyName}</span>
             <span className="inline-flex items-center gap-1 text-sm text-gray-500"><MapPinIcon className="w-3.5 h-3.5" />{sr.location}</span>
-            <span className="inline-flex items-center gap-1 text-sm text-gray-500"><TagIcon className="w-3.5 h-3.5" />{sr.category}</span>
             <PriorityBadge priority={sr.priority} />
-            <StatusBadge status={sr.status} />
             {isOperator && allowedTransitions && allowedTransitions.length > 0 && (
               <select
                 value=""
@@ -688,6 +689,12 @@ export default function RequestDetailPage() {
                 <MapPinIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div><dt className="text-xs text-gray-500">Location</dt><dd className="text-sm font-medium text-gray-900">{sr.location}</dd></div>
               </div>
+              {sr.category && (
+                <div className="flex items-start gap-2">
+                  <TagIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <div><dt className="text-xs text-gray-500">Category</dt><dd className="text-sm font-medium text-gray-900">{sr.category}</dd></div>
+                </div>
+              )}
               <div className="flex items-start gap-2">
                 <InformationCircleIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div>
