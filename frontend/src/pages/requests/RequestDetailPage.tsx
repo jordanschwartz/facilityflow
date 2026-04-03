@@ -700,7 +700,7 @@ export default function RequestDetailPage() {
               </div>
               <div className="flex items-start gap-2">
                 <MapPinIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div><dt className="text-xs text-gray-500">Location</dt><dd className="text-sm font-medium text-gray-900">{sr.location}</dd></div>
+                <div><dt className="text-xs text-gray-500">Location</dt><dd className="text-sm font-medium text-gray-900"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sr.location)}`} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 hover:underline">{sr.location}</a></dd></div>
               </div>
               {sr.category && (
                 <div className="flex items-start gap-2">
