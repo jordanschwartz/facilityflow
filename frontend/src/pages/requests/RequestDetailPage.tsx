@@ -316,8 +316,12 @@ export default function RequestDetailPage() {
 
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
+          {sr.workOrderNumber && (
+            <span className="inline-block mb-2 px-3 py-1 bg-gray-900 text-white text-xs font-mono font-semibold rounded tracking-wide">
+              {sr.workOrderNumber}
+            </span>
+          )}
           <h1 className="text-2xl font-bold text-gray-900 truncate">
-            {sr.workOrderNumber && <span className="text-brand-600 font-mono text-lg mr-2">[WO# {sr.workOrderNumber}]</span>}
             {sr.title}
           </h1>
           <div className="flex flex-wrap items-center gap-3 mt-2">
