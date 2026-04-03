@@ -12,10 +12,10 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     public async Task<Invoice?> GetWithDetailsAsync(Guid id)
     {
         return await DbSet
-            .Include(i => i.WorkOrder).ThenInclude(wo => wo.ServiceRequest).ThenInclude(sr => sr.Client).ThenInclude(c => c.User)
+            .Include(i => i.WorkOrder).ThenInclude(wo => wo.ServiceRequest).ThenInclude(sr => sr.Client)
             .Include(i => i.WorkOrder).ThenInclude(wo => wo.Proposal)
             .Include(i => i.WorkOrder).ThenInclude(wo => wo.Vendor)
-            .Include(i => i.Client).ThenInclude(c => c.User)
+            .Include(i => i.Client)
             .FirstOrDefaultAsync(i => i.Id == id);
     }
 

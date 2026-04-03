@@ -1,5 +1,3 @@
-using FacilityFlow.Core.DTOs.Auth;
-
 namespace FacilityFlow.Application.DTOs.Clients;
 
-public record ClientDto(Guid Id, Guid UserId, string CompanyName, string Phone, string Address, UserDto User, string? WorkOrderPrefix = null);
+public record ClientDto(Guid Id, string CompanyName, string ContactName, string Email, string Phone, string Address, string? WorkOrderPrefix = null);

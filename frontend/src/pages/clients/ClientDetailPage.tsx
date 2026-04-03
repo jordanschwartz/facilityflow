@@ -18,6 +18,8 @@ import { PencilIcon } from '@heroicons/react/24/outline';
 
 const schema = z.object({
   companyName: z.string().min(2, 'Company name required'),
+  contactName: z.string().min(2, 'Contact name required'),
+  email: z.string().email('Valid email required'),
   phone: z.string().min(7, 'Phone required'),
   address: z.string().min(5, 'Address required'),
   workOrderPrefix: z.string().optional(),
@@ -44,7 +46,7 @@ export default function ClientDetailPage() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
-    values: client ? { companyName: client.companyName, phone: client.phone, address: client.address, workOrderPrefix: client.workOrderPrefix ?? '' } : undefined,
+    values: client ? { companyName: client.companyName, contactName: client.contactName, email: client.email, phone: client.phone, address: client.address, workOrderPrefix: client.workOrderPrefix ?? '' } : undefined,
   });
 
   const updateMutation = useMutation({
@@ -72,7 +74,7 @@ export default function ClientDetailPage() {
       </button>
       <PageHeader
         title={client.companyName}
-        subtitle={client.user?.email}
+        subtitle={client.email}
         actions={
           !editing ? (
             <Button variant="secondary" onClick={() => setEditing(true)}>
@@ -92,6 +94,14 @@ export default function ClientDetailPage() {
                 <div>
                   <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Company</dt>
                   <dd className="mt-1 text-sm text-gray-900">{client.companyName}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{client.contactName}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{client.email}</dd>
                 </div>
                 <div>
                   <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</dt>
@@ -115,6 +125,18 @@ export default function ClientDetailPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
                     <input type="text" {...register('companyName')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2" />
                     {errors.companyName && <p className="mt-1 text-xs text-red-600">{errors.companyName.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name</label>
+                    <input type="text" {...register('contactName')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2" />
+                    {errors.contactName && <p className="mt-1 text-xs text-red-600">{errors.contactName.message}</p>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" {...register('email')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2" />
+                    {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
@@ -176,8 +198,12 @@ export default function ClientDetailPage() {
             <h2 className="text-base font-semibold text-gray-900 mb-4">Contact Info</h2>
             <dl className="space-y-3">
               <div>
+                <dt className="text-xs text-gray-500">Contact</dt>
+                <dd className="text-sm text-gray-900">{client.contactName}</dd>
+              </div>
+              <div>
                 <dt className="text-xs text-gray-500">Email</dt>
-                <dd className="text-sm text-gray-900">{client.user?.email}</dd>
+                <dd className="text-sm text-gray-900">{client.email}</dd>
               </div>
               <div>
                 <dt className="text-xs text-gray-500">Phone</dt>

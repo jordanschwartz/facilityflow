@@ -68,7 +68,7 @@ export default function ClientListPage() {
                 <tr key={client.id} onClick={() => navigate(`/clients/${client.id}`)} className={`hover:bg-blue-50/50 transition-colors cursor-pointer ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
                   <td className="px-4 py-2.5">
                     <p className="text-sm font-medium text-gray-900">{client.companyName}</p>
-                    <p className="text-xs text-gray-500">{client.user?.email}</p>
+                    <p className="text-xs text-gray-500">{client.email}</p>
                   </td>
                   <td className="px-4 py-2.5 text-sm text-gray-600">{client.phone}</td>
                   <td className="px-4 py-2.5 text-sm text-gray-600">{client.address}</td>

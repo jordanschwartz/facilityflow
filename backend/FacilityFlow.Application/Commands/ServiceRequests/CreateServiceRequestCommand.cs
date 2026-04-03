@@ -39,7 +39,6 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
         var req = command.Request;
 
         var client = await _clients.Query()
-            .Include(c => c.User)
             .FirstOrDefaultAsync(c => c.Id == req.ClientId, cancellationToken)
             ?? throw new NotFoundException("Client not found.");
 
@@ -74,9 +73,12 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
         _serviceRequests.Add(sr);
         await _serviceRequests.SaveChangesAsync();
 
-        await _notifications.CreateAsync(client.UserId, "ServiceRequest.Created",
-            $"A new service request '{sr.Title}' has been created for your account.",
-            $"/service-requests/{sr.Id}");
+        if (client.UserId.HasValue)
+        {
+            await _notifications.CreateAsync(client.UserId.Value, "ServiceRequest.Created",
+                $"A new service request '{sr.Title}' has been created for your account.",
+                $"/service-requests/{sr.Id}");
+        }
 
         await _activityLogger.LogAsync(
             sr.Id, null,

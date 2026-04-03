@@ -48,11 +48,14 @@ public class SendInvoiceCommandHandler : IRequestHandler<SendInvoiceCommand, Inv
 
         await _invoiceRepo.SaveChangesAsync();
 
-        await _notifications.CreateAsync(
-            invoice.Client.UserId,
-            "Invoice.Sent",
-            $"An invoice for {invoice.Amount:C} has been sent for: {invoice.WorkOrder?.ServiceRequest?.Title}",
-            "/invoices");
+        if (invoice.Client.UserId.HasValue)
+        {
+            await _notifications.CreateAsync(
+                invoice.Client.UserId.Value,
+                "Invoice.Sent",
+                $"An invoice for {invoice.Amount:C} has been sent for: {invoice.WorkOrder?.ServiceRequest?.Title}",
+                "/invoices");
+        }
 
         await _activityLogger.LogAsync(
             invoice.WorkOrder!.ServiceRequestId, invoice.WorkOrderId,

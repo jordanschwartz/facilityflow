@@ -26,7 +26,7 @@ public class GetBillableWorkOrdersQueryHandler : IRequestHandler<GetBillableWork
         var invoicedWoIds = _invoices.Query().Select(i => i.WorkOrderId);
 
         var query = _workOrders.Query()
-            .Include(wo => wo.ServiceRequest).ThenInclude(sr => sr.Client).ThenInclude(c => c.User)
+            .Include(wo => wo.ServiceRequest).ThenInclude(sr => sr.Client)
             .Include(wo => wo.Proposal)
             .Where(wo => wo.Status == WorkOrderStatus.Completed || wo.Status == WorkOrderStatus.Closed)
             .Where(wo => !invoicedWoIds.Contains(wo.Id));
@@ -45,7 +45,7 @@ public class GetBillableWorkOrdersQueryHandler : IRequestHandler<GetBillableWork
             wo.ServiceRequest.Title,
             wo.ServiceRequest.Location,
             wo.ServiceRequest.Client.CompanyName,
-            wo.ServiceRequest.Client.User.Email,
+            wo.ServiceRequest.Client.Email,
             wo.CompletedAt,
             wo.Proposal?.Price,
             wo.Proposal?.ScopeOfWork)).ToList();

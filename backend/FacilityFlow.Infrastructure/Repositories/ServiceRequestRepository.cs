@@ -12,7 +12,7 @@ public class ServiceRequestRepository : Repository<ServiceRequest>, IServiceRequ
     public async Task<ServiceRequest?> GetWithDetailsAsync(Guid id)
     {
         return await DbSet
-            .Include(s => s.Client).ThenInclude(c => c.User)
+            .Include(s => s.Client)
             .Include(s => s.CreatedBy)
             .Include(s => s.Quotes)
             .Include(s => s.Proposal)

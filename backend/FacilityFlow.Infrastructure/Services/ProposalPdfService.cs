@@ -39,7 +39,7 @@ public class ProposalPdfService : IProposalPdfService
     public async Task<byte[]> GenerateAsync(Guid proposalId)
     {
         var proposal = await _proposals.Query()
-            .Include(p => p.ServiceRequest).ThenInclude(sr => sr.Client).ThenInclude(c => c.User)
+            .Include(p => p.ServiceRequest).ThenInclude(sr => sr.Client)
             .Include(p => p.Quote).ThenInclude(q => q.LineItems)
             .Include(p => p.LineItems)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
@@ -130,11 +130,11 @@ public class ProposalPdfService : IProposalPdfService
                 row.RelativeItem().Component(new SectionBox("Prepared For", c =>
                 {
                     c.Item().Text(client.CompanyName).Bold().FontSize(12);
-                    c.Item().PaddingTop(2).Text(client.User.Name).FontSize(10);
+                    c.Item().PaddingTop(2).Text(client.ContactName).FontSize(10);
                     if (!string.IsNullOrWhiteSpace(client.Address))
                         c.Item().Text(client.Address).FontSize(9).FontColor(GrayTextHex);
-                    if (!string.IsNullOrWhiteSpace(client.User.Email))
-                        c.Item().Text(client.User.Email).FontSize(9).FontColor(GrayTextHex);
+                    if (!string.IsNullOrWhiteSpace(client.Email))
+                        c.Item().Text(client.Email).FontSize(9).FontColor(GrayTextHex);
                     if (!string.IsNullOrWhiteSpace(client.Phone))
                         c.Item().Text(client.Phone).FontSize(9).FontColor(GrayTextHex);
                 }));

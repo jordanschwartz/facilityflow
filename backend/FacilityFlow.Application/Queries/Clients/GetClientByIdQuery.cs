@@ -1,9 +1,7 @@
 using FacilityFlow.Application.DTOs.Clients;
-using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
-using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,17 +18,16 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
     public async Task<ClientDto> Handle(GetClientByIdQuery request, CancellationToken cancellationToken)
     {
         var client = await _clients.Query()
-            .Include(c => c.User)
             .FirstOrDefaultAsync(c => c.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException("Client not found.");
 
         return new ClientDto(
             client.Id,
-            client.UserId,
             client.CompanyName,
+            client.ContactName,
+            client.Email,
             client.Phone,
             client.Address,
-            client.User.Adapt<UserDto>(),
             client.WorkOrderPrefix
         );
     }

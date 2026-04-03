@@ -1,9 +1,7 @@
 using FacilityFlow.Application.DTOs.Clients;
-using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
-using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,11 +18,12 @@ public class UpdateClientCommandHandler : IRequestHandler<UpdateClientCommand, C
     public async Task<ClientDto> Handle(UpdateClientCommand command, CancellationToken cancellationToken)
     {
         var client = await _clients.Query()
-            .Include(c => c.User)
             .FirstOrDefaultAsync(c => c.Id == command.Id, cancellationToken)
             ?? throw new NotFoundException("Client not found.");
 
         client.CompanyName = command.Request.CompanyName;
+        client.ContactName = command.Request.ContactName;
+        client.Email = command.Request.Email;
         client.Phone = command.Request.Phone;
         client.Address = command.Request.Address;
         client.WorkOrderPrefix = command.Request.WorkOrderPrefix;
@@ -33,11 +32,11 @@ public class UpdateClientCommandHandler : IRequestHandler<UpdateClientCommand, C
 
         return new ClientDto(
             client.Id,
-            client.UserId,
             client.CompanyName,
+            client.ContactName,
+            client.Email,
             client.Phone,
             client.Address,
-            client.User.Adapt<UserDto>(),
             client.WorkOrderPrefix
         );
     }

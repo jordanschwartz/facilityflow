@@ -1,9 +1,7 @@
 using FacilityFlow.Application.DTOs.Clients;
 using FacilityFlow.Application.DTOs.Common;
-using FacilityFlow.Core.DTOs.Auth;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Interfaces.Repositories;
-using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,15 +17,14 @@ public class GetClientsQueryHandler : IRequestHandler<GetClientsQuery, PagedResu
 
     public async Task<PagedResult<ClientDto>> Handle(GetClientsQuery request, CancellationToken cancellationToken)
     {
-        var query = _clients.Query().Include(c => c.User).AsQueryable();
+        var query = _clients.Query().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var search = request.Search.ToLower();
             query = query.Where(c => c.CompanyName.ToLower().Contains(search)
-                                  || c.User.FirstName.ToLower().Contains(search)
-                                  || c.User.LastName.ToLower().Contains(search)
-                                  || c.User.Email.ToLower().Contains(search));
+                                  || c.ContactName.ToLower().Contains(search)
+                                  || c.Email.ToLower().Contains(search));
         }
 
         var total = await query.CountAsync(cancellationToken);
@@ -39,11 +36,11 @@ public class GetClientsQueryHandler : IRequestHandler<GetClientsQuery, PagedResu
 
         var dtos = items.Select(c => new ClientDto(
             c.Id,
-            c.UserId,
             c.CompanyName,
+            c.ContactName,
+            c.Email,
             c.Phone,
             c.Address,
-            c.User.Adapt<UserDto>(),
             c.WorkOrderPrefix
         )).ToList();
 

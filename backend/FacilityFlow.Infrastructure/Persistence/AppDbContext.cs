@@ -93,6 +93,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<VendorPayment>()
             .HasOne(vp => vp.WorkOrder).WithMany().HasForeignKey(vp => vp.WorkOrderId).OnDelete(DeleteBehavior.SetNull);
 
+        // Client.UserId is now optional (clients are contact records, not necessarily system users)
+        modelBuilder.Entity<Client>()
+            .HasOne(c => c.User).WithOne(u => u.Client).HasForeignKey<Client>(c => c.UserId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+
         // Vendor.UserId is now optional (email-first vendors don't need user accounts)
         modelBuilder.Entity<Vendor>()
             .HasOne(v => v.User).WithOne(u => u.Vendor).HasForeignKey<Vendor>(v => v.UserId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);

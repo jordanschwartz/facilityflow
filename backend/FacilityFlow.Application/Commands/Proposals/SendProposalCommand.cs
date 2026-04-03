@@ -64,11 +64,14 @@ public class SendProposalCommandHandler : IRequestHandler<SendProposalCommand, P
 
         await _proposals.SaveChangesAsync();
 
-        await _notifications.CreateAsync(
-            proposal.ServiceRequest.Client.UserId,
-            "Proposal.Sent",
-            $"A proposal has been sent for your service request: {proposal.ServiceRequest.Title}",
-            $"/proposals/view/{proposal.PublicToken}");
+        if (proposal.ServiceRequest.Client.UserId.HasValue)
+        {
+            await _notifications.CreateAsync(
+                proposal.ServiceRequest.Client.UserId.Value,
+                "Proposal.Sent",
+                $"A proposal has been sent for your service request: {proposal.ServiceRequest.Title}",
+                $"/proposals/view/{proposal.PublicToken}");
+        }
 
         await _activityLogger.LogAsync(
             proposal.ServiceRequestId, null,

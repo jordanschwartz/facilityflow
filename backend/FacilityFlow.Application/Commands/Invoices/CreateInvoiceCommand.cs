@@ -30,7 +30,7 @@ public class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceCommand,
         var req = command.Request;
 
         var wo = await _workOrders.Query()
-            .Include(w => w.ServiceRequest).ThenInclude(sr => sr.Client).ThenInclude(c => c.User)
+            .Include(w => w.ServiceRequest).ThenInclude(sr => sr.Client)
             .Include(w => w.Proposal)
             .FirstOrDefaultAsync(w => w.Id == command.WorkOrderId, cancellationToken)
             ?? throw new NotFoundException("Work order not found.");

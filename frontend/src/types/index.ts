@@ -158,7 +158,13 @@ export interface VendorSourcingResult {
 }
 
 export interface Client {
-  id: string; userId: string; companyName: string; phone: string; address: string; workOrderPrefix?: string; user: AuthUser;
+  id: string;
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  address: string;
+  workOrderPrefix?: string;
 }
 
 export interface VendorInvite {
