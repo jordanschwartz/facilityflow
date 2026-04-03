@@ -317,7 +317,7 @@ export default function RequestDetailPage() {
 
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex items-center justify-between gap-3 mb-1 pr-4">
             <h1 className="text-2xl font-bold text-gray-900 truncate">
               {sr.title}
             </h1>
