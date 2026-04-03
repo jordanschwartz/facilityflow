@@ -75,10 +75,11 @@ public class UpdateWorkOrderStatusCommandHandler : IRequestHandler<UpdateWorkOrd
             sr.ClientId,
             sr.CreatedAt,
             sr.UpdatedAt,
-            new ClientSummaryDto(sr.Client.Id, sr.Client.CompanyName, sr.Client.Phone),
+            new ClientSummaryDto(sr.Client.Id, sr.Client.CompanyName, sr.Client.Phone, sr.Client.WorkOrderPrefix),
             sr.Quotes.Count,
             sr.Proposal != null,
-            sr.WorkOrder != null
+            sr.WorkOrder != null,
+            sr.WorkOrderNumber
         );
 
     private static WorkOrderDto MapToDetail(WorkOrder wo) =>

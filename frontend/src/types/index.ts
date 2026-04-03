@@ -89,6 +89,7 @@ export interface ServiceRequestSummary {
   id: string; title: string; priority: Priority; status: ServiceRequestStatus;
   clientId: string; createdAt: string; updatedAt: string;
   client: ClientSummary; quoteCount: number; hasProposal: boolean; hasWorkOrder: boolean;
+  workOrderNumber?: string;
 }
 
 export interface ServiceRequest extends ServiceRequestSummary {
@@ -157,7 +158,7 @@ export interface VendorSourcingResult {
 }
 
 export interface Client {
-  id: string; userId: string; companyName: string; phone: string; address: string; user: AuthUser;
+  id: string; userId: string; companyName: string; phone: string; address: string; workOrderPrefix?: string; user: AuthUser;
 }
 
 export interface VendorInvite {

@@ -27,6 +27,7 @@ public class UpdateClientCommandHandler : IRequestHandler<UpdateClientCommand, C
         client.CompanyName = command.Request.CompanyName;
         client.Phone = command.Request.Phone;
         client.Address = command.Request.Address;
+        client.WorkOrderPrefix = command.Request.WorkOrderPrefix;
 
         await _clients.SaveChangesAsync();
 
@@ -36,7 +37,8 @@ public class UpdateClientCommandHandler : IRequestHandler<UpdateClientCommand, C
             client.CompanyName,
             client.Phone,
             client.Address,
-            client.User.Adapt<UserDto>()
+            client.User.Adapt<UserDto>(),
+            client.WorkOrderPrefix
         );
     }
 }

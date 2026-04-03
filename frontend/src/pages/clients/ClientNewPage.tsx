@@ -14,6 +14,7 @@ const schema = z.object({
   companyName: z.string().min(2, 'Company name required'),
   phone: z.string().min(7, 'Phone required'),
   address: z.string().min(5, 'Address required'),
+  workOrderPrefix: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -70,6 +71,18 @@ export default function ClientNewPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
             <input type="text" {...register('address')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2" placeholder="123 Main St, City, State ZIP" />
             {errors.address && <p className="mt-1 text-xs text-red-600">{errors.address.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Work Order Prefix</label>
+            <input
+              type="text"
+              {...register('workOrderPrefix', {
+                onChange: (e) => { e.target.value = e.target.value.toUpperCase(); },
+              })}
+              placeholder="e.g. ABS"
+              className="block w-32 rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2 uppercase"
+            />
+            <p className="mt-1 text-xs text-gray-500">Used to generate work order numbers (e.g. ABS-26-000001)</p>
           </div>
           <div className="pt-2">
             <Button type="submit" loading={isSubmitting || createMutation.isPending} size="lg">

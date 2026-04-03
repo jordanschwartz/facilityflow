@@ -316,7 +316,10 @@ export default function RequestDetailPage() {
 
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900 truncate">{sr.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 truncate">
+            {sr.workOrderNumber && <span className="text-brand-600 font-mono text-lg mr-2">[WO# {sr.workOrderNumber}]</span>}
+            {sr.title}
+          </h1>
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <span className="text-sm text-gray-500">{sr.client?.companyName}</span>
             <span className="inline-flex items-center gap-1 text-sm text-gray-500"><MapPinIcon className="w-3.5 h-3.5" />{sr.location}</span>

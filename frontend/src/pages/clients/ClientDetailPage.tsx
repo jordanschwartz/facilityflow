@@ -20,6 +20,7 @@ const schema = z.object({
   companyName: z.string().min(2, 'Company name required'),
   phone: z.string().min(7, 'Phone required'),
   address: z.string().min(5, 'Address required'),
+  workOrderPrefix: z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -43,7 +44,7 @@ export default function ClientDetailPage() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
-    values: client ? { companyName: client.companyName, phone: client.phone, address: client.address } : undefined,
+    values: client ? { companyName: client.companyName, phone: client.phone, address: client.address, workOrderPrefix: client.workOrderPrefix ?? '' } : undefined,
   });
 
   const updateMutation = useMutation({
@@ -100,6 +101,12 @@ export default function ClientDetailPage() {
                   <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Address</dt>
                   <dd className="mt-1 text-sm text-gray-900">{client.address}</dd>
                 </div>
+                {client.workOrderPrefix && (
+                  <div>
+                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">WO Prefix</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{client.workOrderPrefix}</dd>
+                  </div>
+                )}
               </dl>
             ) : (
               <form onSubmit={handleSubmit(data => updateMutation.mutate(data))} className="space-y-4">
@@ -119,6 +126,18 @@ export default function ClientDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                   <input type="text" {...register('address')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2" />
                   {errors.address && <p className="mt-1 text-xs text-red-600">{errors.address.message}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Work Order Prefix</label>
+                  <input
+                    type="text"
+                    {...register('workOrderPrefix', {
+                      onChange: (e) => { e.target.value = e.target.value.toUpperCase(); },
+                    })}
+                    placeholder="e.g. ABS"
+                    className="block w-32 rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2 uppercase"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Used to generate work order numbers (e.g. ABS-26-000001)</p>
                 </div>
                 <Button type="submit" loading={isSubmitting || updateMutation.isPending}>Save Changes</Button>
               </form>

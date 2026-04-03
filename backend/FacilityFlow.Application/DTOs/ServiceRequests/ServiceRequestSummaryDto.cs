@@ -13,4 +13,5 @@ public record ServiceRequestSummaryDto(
     ClientSummaryDto Client,
     int QuoteCount,
     bool HasProposal,
-    bool HasWorkOrder);
+    bool HasWorkOrder,
+    string? WorkOrderNumber = null);

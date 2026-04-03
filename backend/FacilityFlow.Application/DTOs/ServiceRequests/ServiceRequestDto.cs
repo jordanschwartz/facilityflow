@@ -21,6 +21,7 @@ public record ServiceRequestDto(
     bool HasProposal,
     bool HasWorkOrder,
     List<AttachmentDto> Attachments,
+    string? WorkOrderNumber = null,
     string? PoNumber = null,
     decimal? PoAmount = null,
     string? PoFileUrl = null,

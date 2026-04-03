@@ -114,6 +114,7 @@ export default function RequestListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr className="bg-gray-100 border-b border-gray-300">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">WO #</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Title</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Client</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Category</th>
@@ -126,6 +127,7 @@ export default function RequestListPage() {
             <tbody className="divide-y divide-gray-100 bg-white">
               {filteredItems.map((item, idx) => (
                 <tr key={item.id} onClick={() => navigate(`/work-orders/${item.id}`)} className={`hover:bg-blue-50/50 transition-colors cursor-pointer ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                  <td className="px-4 py-2.5 text-sm text-gray-600 font-mono">{item.workOrderNumber ?? '—'}</td>
                   <td className="px-4 py-2.5">
                     <p className="text-sm font-medium text-gray-900">{item.title}</p>
                   </td>

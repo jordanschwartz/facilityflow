@@ -58,6 +58,19 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
             UpdatedAt = DateTime.UtcNow
         };
 
+        // Generate work order number
+        if (!string.IsNullOrWhiteSpace(client.WorkOrderPrefix))
+        {
+            var year = DateTime.UtcNow.ToString("yy");
+            var prefix = client.WorkOrderPrefix.ToUpper();
+
+            // Count existing service requests for this client to get the next number
+            var count = await _serviceRequests.Query()
+                .CountAsync(sr2 => sr2.ClientId == client.Id && sr2.WorkOrderNumber != null, cancellationToken);
+
+            sr.WorkOrderNumber = $"{prefix}-{year}-{(count + 1):D6}";
+        }
+
         _serviceRequests.Add(sr);
         await _serviceRequests.SaveChangesAsync();
 
@@ -84,12 +97,13 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
             result.CreatedById,
             result.CreatedAt,
             result.UpdatedAt,
-            new ClientSummaryDto(result.Client.Id, result.Client.CompanyName, result.Client.Phone),
+            new ClientSummaryDto(result.Client.Id, result.Client.CompanyName, result.Client.Phone, result.Client.WorkOrderPrefix),
             result.CreatedBy.Adapt<UserDto>(),
             result.Quotes.Count,
             result.Proposal != null,
             result.WorkOrder != null,
             result.Attachments.Select(a => new AttachmentDto(a.Id, a.Url, a.Filename, a.MimeType)).ToList(),
+            result.WorkOrderNumber,
             result.PoNumber,
             result.PoAmount,
             result.PoFileUrl,

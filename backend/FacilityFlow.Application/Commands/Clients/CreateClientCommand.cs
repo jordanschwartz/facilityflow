@@ -40,12 +40,13 @@ public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, C
             UserId = authResult.User.Id,
             CompanyName = req.CompanyName,
             Phone = req.Phone,
-            Address = req.Address
+            Address = req.Address,
+            WorkOrderPrefix = req.WorkOrderPrefix
         };
 
         _clients.Add(client);
         await _clients.SaveChangesAsync();
 
-        return new ClientDto(client.Id, client.UserId, client.CompanyName, client.Phone, client.Address, authResult.User.Adapt<UserDto>());
+        return new ClientDto(client.Id, client.UserId, client.CompanyName, client.Phone, client.Address, authResult.User.Adapt<UserDto>(), client.WorkOrderPrefix);
     }
 }

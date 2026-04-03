@@ -43,7 +43,8 @@ public class GetClientsQueryHandler : IRequestHandler<GetClientsQuery, PagedResu
             c.CompanyName,
             c.Phone,
             c.Address,
-            c.User.Adapt<UserDto>()
+            c.User.Adapt<UserDto>(),
+            c.WorkOrderPrefix
         )).ToList();
 
         return new PagedResult<ClientDto>(dtos, total, request.Page, request.PageSize);

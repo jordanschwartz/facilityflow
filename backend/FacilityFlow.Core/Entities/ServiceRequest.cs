@@ -24,6 +24,9 @@ public class ServiceRequest
     public WorkOrder? WorkOrder { get; set; }
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
+    // Work order numbering
+    public string? WorkOrderNumber { get; set; }
+
     // PO tracking
     public string? PoNumber { get; set; }
     public decimal? PoAmount { get; set; }

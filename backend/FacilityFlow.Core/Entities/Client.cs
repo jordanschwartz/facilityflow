@@ -7,6 +7,7 @@ public class Client
     public string CompanyName { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
+    public string? WorkOrderPrefix { get; set; }
     public User User { get; set; } = null!;
     public ICollection<ServiceRequest> ServiceRequests { get; set; } = new List<ServiceRequest>();
 }

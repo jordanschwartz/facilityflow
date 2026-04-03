@@ -30,7 +30,8 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
             client.CompanyName,
             client.Phone,
             client.Address,
-            client.User.Adapt<UserDto>()
+            client.User.Adapt<UserDto>(),
+            client.WorkOrderPrefix
         );
     }
 }
