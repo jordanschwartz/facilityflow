@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { AttachmentDto, Quote } from '../types';
+import type { AttachmentDto, ManualQuoteEntryRequest, Quote } from '../types';
 
 export const quotesApi = {
   submit: (serviceRequestId: string, data: { price: number; scopeOfWork: string }) =>
@@ -31,4 +31,6 @@ export const quotesApi = {
   },
   deleteAttachment: (token: string, attachmentId: string) =>
     apiClient.delete(`/quotes/submit/${token}/attachments/${attachmentId}`),
+  manualEntry: (data: ManualQuoteEntryRequest) =>
+    apiClient.post<Quote>('/quotes/manual-entry', data),
 };

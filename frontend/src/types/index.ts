@@ -4,7 +4,7 @@ export type ServiceRequestStatus = 'New' | 'Qualifying' | 'Sourcing' | 'Scheduli
 export type QuoteStatus = 'Requested' | 'Submitted' | 'Reviewed' | 'Selected' | 'Rejected';
 export type ProposalStatus = 'Draft' | 'Sent' | 'Viewed' | 'Approved' | 'Rejected' | 'Revised';
 export type WorkOrderStatus = 'Assigned' | 'InProgress' | 'Completed' | 'Closed';
-export type VendorInviteStatus = 'Invited' | 'Viewed' | 'Quoted' | 'Declined';
+export type VendorInviteStatus = 'Candidate' | 'WorkOrderSent' | 'Viewed' | 'QuoteSubmitted' | 'Selected' | 'Rejected';
 export type VendorStatus = 'Active' | 'Inactive' | 'Dnu' | 'Prospect';
 
 export interface DiscoveredVendor {
@@ -170,7 +170,25 @@ export interface Client {
 export interface VendorInvite {
   id: string; serviceRequestId: string; vendorId: string;
   status: VendorInviteStatus; sentAt: string;
+  publicToken?: string;
   vendor: VendorSummary; quote?: QuoteSummary;
+}
+
+export interface WorkOrderViewDto {
+  workOrderNumber: string;
+  title: string;
+  description: string;
+  serviceLocation: string;
+  category: string;
+  priority: string;
+  clientName: string;
+  scheduledDate: string | null;
+  requestedDate: string;
+  contactName: string;
+  contactEmail: string;
+  quoteToken: string | null;
+  vendorName: string;
+  status: string;
 }
 
 export interface QuoteLineItem {
@@ -403,4 +421,20 @@ export interface CreateInvoiceRequest {
 
 export interface UpdateInvoiceRequest {
   amount?: number; description?: string; billToName?: string; billToEmail?: string; notes?: string;
+}
+
+export interface ManualQuoteEntryRequest {
+  serviceRequestId: string;
+  vendorInviteId: string;
+  price: number;
+  scopeOfWork: string;
+  proposedStartDate?: string;
+  estimatedDurationValue?: number;
+  estimatedDurationUnit?: string;
+  notToExceedPrice?: number;
+  assumptions?: string;
+  exclusions?: string;
+  vendorAvailability?: string;
+  validUntil?: string;
+  lineItems?: { description: string; quantity: number; unitPrice: number }[];
 }

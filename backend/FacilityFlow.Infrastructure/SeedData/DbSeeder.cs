@@ -288,7 +288,7 @@ public static class DbSeeder
                 Id = Invite1Id,
                 ServiceRequestId = SR2Id,
                 VendorId = Vendor2Id,
-                Status = VendorInviteStatus.Quoted,
+                Status = VendorInviteStatus.QuoteSubmitted,
                 SentAt = now.AddDays(-18)
             },
             new()
@@ -296,7 +296,7 @@ public static class DbSeeder
                 Id = Invite2Id,
                 ServiceRequestId = SR2Id,
                 VendorId = Vendor5Id,
-                Status = VendorInviteStatus.Invited,
+                Status = VendorInviteStatus.Candidate,
                 SentAt = now.AddDays(-18)
             },
             new()
@@ -304,7 +304,7 @@ public static class DbSeeder
                 Id = Invite3Id,
                 ServiceRequestId = SR3Id,
                 VendorId = Vendor4Id,
-                Status = VendorInviteStatus.Quoted,
+                Status = VendorInviteStatus.QuoteSubmitted,
                 SentAt = now.AddDays(-28)
             },
         };

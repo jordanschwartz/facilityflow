@@ -46,6 +46,8 @@ public static class DependencyInjection
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IActivityLogger, ActivityLogger>();
         services.AddScoped<IProposalPdfService, ProposalPdfService>();
+        services.AddScoped<IWorkOrderPdfService, WorkOrderPdfService>();
+        services.AddSingleton<IEmailService, SesEmailService>();
 
         return services;
     }

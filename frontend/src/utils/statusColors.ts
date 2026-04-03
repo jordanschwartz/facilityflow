@@ -33,6 +33,10 @@ export const statusColors: Record<string, string> = {
   Completed: 'bg-emerald-100 text-emerald-700',
   // Invoice
   Paid: 'bg-green-100 text-green-700',
+  // VendorInvite
+  Candidate: 'bg-gray-100 text-gray-700',
+  WorkOrderSent: 'bg-blue-100 text-blue-700',
+  QuoteSubmitted: 'bg-amber-100 text-amber-700',
   // Vendor
   Prospect: 'bg-violet-100 text-violet-700',
   // User
@@ -73,6 +77,9 @@ export const statusLabels: Record<string, string> = {
   InProgress: 'In Progress',
   Completed: 'Completed',
   Paid: 'Paid',
+  Candidate: 'Candidate',
+  WorkOrderSent: 'WO Sent',
+  QuoteSubmitted: 'Quote Submitted',
   Prospect: 'Prospect',
   Active: 'Active',
   Inactive: 'Inactive',

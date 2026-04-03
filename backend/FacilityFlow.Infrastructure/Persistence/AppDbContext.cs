@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
+    public DbSet<WorkOrderDocument> WorkOrderDocuments => Set<WorkOrderDocument>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Proposal>().HasIndex(p => p.PublicToken).IsUnique();
         modelBuilder.Entity<Proposal>().HasIndex(p => p.ServiceRequestId).IsUnique();
         modelBuilder.Entity<WorkOrder>().HasIndex(wo => wo.ServiceRequestId).IsUnique();
+        modelBuilder.Entity<VendorInvite>().HasIndex(vi => vi.PublicToken).IsUnique();
         modelBuilder.Entity<VendorInvite>().HasIndex(vi => new { vi.ServiceRequestId, vi.VendorId }).IsUnique();
         modelBuilder.Entity<Invoice>().HasIndex(i => i.WorkOrderId).IsUnique();
         modelBuilder.Entity<Invoice>().HasIndex(i => i.PublicToken).IsUnique();
@@ -144,6 +146,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Invoice>().Property(i => i.Amount).HasPrecision(18, 2);
         modelBuilder.Entity<Invoice>().HasOne(i => i.WorkOrder).WithMany().HasForeignKey(i => i.WorkOrderId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<Invoice>().HasOne(i => i.Client).WithMany().HasForeignKey(i => i.ClientId).OnDelete(DeleteBehavior.Restrict);
+
+        // WorkOrderDocument
+        modelBuilder.Entity<WorkOrderDocument>()
+            .HasOne(d => d.ServiceRequest).WithMany().HasForeignKey(d => d.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<WorkOrderDocument>()
+            .HasOne(d => d.VendorInvite).WithMany().HasForeignKey(d => d.VendorInviteId).OnDelete(DeleteBehavior.Cascade);
 
         // ActivityLog
         modelBuilder.Entity<ActivityLog>().Property(a => a.Action).IsRequired();

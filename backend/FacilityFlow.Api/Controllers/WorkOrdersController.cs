@@ -1,9 +1,14 @@
+using FacilityFlow.Application.Commands.ServiceRequests;
 using FacilityFlow.Application.Commands.WorkOrders;
 using FacilityFlow.Application.DTOs.WorkOrders;
 using FacilityFlow.Application.Queries.WorkOrders;
+using FacilityFlow.Core.Interfaces.Repositories;
+using FacilityFlow.Core.Interfaces.Services;
+using FacilityFlow.Core.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FacilityFlow.Api.Controllers;
 
@@ -13,8 +18,15 @@ namespace FacilityFlow.Api.Controllers;
 public class WorkOrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IWorkOrderPdfService _pdfService;
+    private readonly IRepository<VendorInvite> _vendorInvites;
 
-    public WorkOrdersController(IMediator mediator) => _mediator = mediator;
+    public WorkOrdersController(IMediator mediator, IWorkOrderPdfService pdfService, IRepository<VendorInvite> vendorInvites)
+    {
+        _mediator = mediator;
+        _pdfService = pdfService;
+        _vendorInvites = vendorInvites;
+    }
 
     [HttpGet]
     [Authorize(Roles = "Operator")]
@@ -60,5 +72,40 @@ public class WorkOrdersController : ControllerBase
     {
         await _mediator.Send(new DeleteWorkOrderAttachmentCommand(id, attachmentId));
         return NoContent();
+    }
+
+    [HttpPost("{serviceRequestId:guid}/send")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> SendWorkOrder(Guid serviceRequestId, [FromBody] SendWorkOrderRequest req)
+    {
+        var result = await _mediator.Send(new SendWorkOrderToVendorCommand(serviceRequestId, req.VendorInviteId));
+        return Ok(result);
+    }
+
+    [HttpGet("{serviceRequestId:guid}/preview-pdf")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> PreviewPdf(Guid serviceRequestId, [FromQuery] Guid vendorInviteId)
+    {
+        var pdf = await _pdfService.GeneratePdfAsync(serviceRequestId, vendorInviteId);
+        return File(pdf, "application/pdf", $"WorkOrder-Preview.pdf");
+    }
+
+    [HttpGet("view/{token}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ViewByToken(string token)
+    {
+        var result = await _mediator.Send(new GetWorkOrderByTokenQuery(token));
+        return Ok(result);
+    }
+
+    [HttpGet("view/{token}/pdf")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ViewPdfByToken(string token)
+    {
+        var invite = await _vendorInvites.Query()
+            .FirstOrDefaultAsync(vi => vi.PublicToken == token);
+        if (invite == null) return NotFound();
+        var pdf = await _pdfService.GeneratePdfAsync(invite.ServiceRequestId, invite.Id);
+        return File(pdf, "application/pdf", "WorkOrder.pdf");
     }
 }

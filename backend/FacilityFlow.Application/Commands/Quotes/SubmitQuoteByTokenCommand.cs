@@ -79,7 +79,7 @@ public class SubmitQuoteByTokenCommandHandler : IRequestHandler<SubmitQuoteByTok
         var invite = await _vendorInvites.Query()
             .FirstOrDefaultAsync(vi => vi.ServiceRequestId == quote.ServiceRequestId && vi.VendorId == quote.VendorId, cancellationToken);
         if (invite != null)
-            invite.Status = VendorInviteStatus.Quoted;
+            invite.Status = VendorInviteStatus.QuoteSubmitted;
 
         // Transition SR to PendingQuotes if in Sourcing
         if (quote.ServiceRequest.Status == ServiceRequestStatus.Sourcing)

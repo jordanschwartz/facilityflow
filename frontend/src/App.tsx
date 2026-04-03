@@ -19,6 +19,7 @@ import ClientNewPage from './pages/clients/ClientNewPage';
 import ClientDetailPage from './pages/clients/ClientDetailPage';
 import QuoteSubmitPage from './pages/public/QuoteSubmitPage';
 import ProposalViewPage from './pages/public/ProposalViewPage';
+import WorkOrderViewPage from './pages/public/WorkOrderViewPage';
 import InvoiceListPage from './pages/invoices/InvoiceListPage';
 import InvoiceDetailPage from './pages/invoices/InvoiceDetailPage';
 import UserListPage from './pages/admin/UserListPage';
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/register" element={<Navigate to="/login" replace />} />
           <Route path="/quotes/submit/:token" element={<QuoteSubmitPage />} />
           <Route path="/proposals/view/:token" element={<ProposalViewPage />} />
+          <Route path="/work-orders/view/:token" element={<WorkOrderViewPage />} />
           <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />

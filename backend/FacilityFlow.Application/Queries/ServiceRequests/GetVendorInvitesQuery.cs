@@ -49,7 +49,8 @@ public class GetVendorInvitesQueryHandler : IRequestHandler<GetVendorInvitesQuer
                 inv.Status.ToString(),
                 inv.SentAt,
                 new VendorSummaryDto(inv.Vendor.Id, inv.Vendor.CompanyName, inv.Vendor.Trades, inv.Vendor.Rating),
-                q == null ? null : new QuoteSummaryDto(q.Id, q.Status.ToString(), q.Price == 0 ? null : q.Price, q.SubmittedAt)
+                q == null ? null : new QuoteSummaryDto(q.Id, q.Status.ToString(), q.Price == 0 ? null : q.Price, q.SubmittedAt),
+                inv.PublicToken
             ));
         }
 

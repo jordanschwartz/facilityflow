@@ -44,7 +44,6 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
 
         var existingVendorIds = sr.VendorInvites.Select(vi => vi.VendorId).ToHashSet();
         var created = new List<VendorInvite>();
-        var createdQuotes = new Dictionary<Guid, Quote>();
         var skipped = new List<Guid>();
 
         foreach (var vendorId in command.Request.VendorIds)
@@ -67,36 +66,13 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
                 Id = Guid.NewGuid(),
                 ServiceRequestId = command.ServiceRequestId,
                 VendorId = vendorId,
-                Status = VendorInviteStatus.Invited,
+                Status = VendorInviteStatus.Candidate,
+                PublicToken = "wo-" + Guid.NewGuid().ToString("N"),
                 SentAt = DateTime.UtcNow
             };
 
-            var quote = new Quote
-            {
-                Id = Guid.NewGuid(),
-                ServiceRequestId = command.ServiceRequestId,
-                VendorId = vendorId,
-                Price = 0m,
-                ScopeOfWork = string.Empty,
-                Status = QuoteStatus.Requested,
-                PublicToken = "qt-" + Guid.NewGuid().ToString("N")
-            };
-
             _vendorInvites.Add(invite);
-            _quotes.Add(quote);
             created.Add(invite);
-            createdQuotes[vendorId] = quote;
-
-            if (vendor.UserId.HasValue)
-                await _notifications.CreateAsync(vendor.UserId.Value, "VendorInvite.Received",
-                    $"You have been invited to quote on service request: {sr.Title}",
-                    $"/quotes/submit/{quote.PublicToken}");
-        }
-
-        if (created.Any() && sr.Status == ServiceRequestStatus.New)
-        {
-            sr.Status = ServiceRequestStatus.Sourcing;
-            sr.UpdatedAt = DateTime.UtcNow;
         }
 
         await _serviceRequests.SaveChangesAsync();
@@ -104,11 +80,9 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
         foreach (var inv in created)
         {
             var vendor = await _vendors.GetByIdAsync(inv.VendorId);
-            var quoteToken = createdQuotes.TryGetValue(inv.VendorId, out var q) ? q.PublicToken : null;
-            var quoteLink = quoteToken != null ? $" — Quote link: /quotes/submit/{quoteToken}" : "";
             await _activityLogger.LogAsync(
                 command.ServiceRequestId, null,
-                $"Sent quote request to {vendor?.CompanyName ?? "vendor"}{quoteLink}",
+                $"Added {vendor?.CompanyName ?? "vendor"} as candidate",
                 ActivityLogCategory.Communication, string.Empty, null);
         }
 
@@ -129,7 +103,8 @@ public class CreateVendorInvitesCommandHandler : IRequestHandler<CreateVendorInv
                 inv.Status.ToString(),
                 inv.SentAt,
                 new VendorSummaryDto(v!.Id, v.CompanyName, v.Trades, v.Rating),
-                q == null ? null : new QuoteSummaryDto(q.Id, q.Status.ToString(), q.Price == 0 ? null : q.Price, q.SubmittedAt)
+                q == null ? null : new QuoteSummaryDto(q.Id, q.Status.ToString(), q.Price == 0 ? null : q.Price, q.SubmittedAt),
+                inv.PublicToken
             ));
         }
 

@@ -9,4 +9,5 @@ public record VendorInviteDto(
     string Status,
     DateTime SentAt,
     VendorSummaryDto Vendor,
-    QuoteSummaryDto? Quote);
+    QuoteSummaryDto? Quote,
+    string? PublicToken = null);

@@ -61,4 +61,26 @@ public class QuotesController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> SubmitByToken(string token, [FromBody] SubmitQuoteRequest req)
         => Ok(await _mediator.Send(new SubmitQuoteByTokenCommand(token, req)));
+
+    [HttpPost("api/quotes/manual-entry")]
+    [Authorize(Roles = "Operator")]
+    public async Task<IActionResult> ManualEntry([FromBody] ManualQuoteEntryRequest req)
+    {
+        var quoteId = await _mediator.Send(new ManualQuoteEntryCommand(
+            req.ServiceRequestId,
+            req.VendorInviteId,
+            req.Price,
+            req.ScopeOfWork,
+            req.ProposedStartDate,
+            req.EstimatedDurationValue,
+            req.EstimatedDurationUnit,
+            req.NotToExceedPrice,
+            req.Assumptions,
+            req.Exclusions,
+            req.VendorAvailability,
+            req.ValidUntil,
+            req.LineItems?.Select(li => new ManualQuoteLineItem(li.Description, li.Quantity, li.UnitPrice)).ToList()
+        ));
+        return Ok(new { id = quoteId });
+    }
 }

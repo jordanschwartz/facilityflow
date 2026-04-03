@@ -130,11 +130,11 @@ function LocalVendorsTab({
   const inviteMutation = useMutation({
     mutationFn: (vendorId: string) => serviceRequestsApi.createInvites(serviceRequestId!, [vendorId]),
     onSuccess: () => {
-      toast.success('Vendor invited');
+      toast.success('Vendor added');
       queryClient.invalidateQueries({ queryKey: ['service-requests', serviceRequestId, 'invites'] });
       queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     },
-    onError: () => toast.error('Failed to invite vendor'),
+    onError: () => toast.error('Failed to add vendor'),
   });
 
   return (
@@ -284,14 +284,14 @@ function LocalVendorCard({
 
         <div className="flex-shrink-0">
           {vendor.isDnu ? (
-            <span title="Cannot invite a Do Not Use vendor" className="inline-block">
+            <span title="Cannot add a Do Not Use vendor" className="inline-block">
               <Button size="sm" disabled variant="secondary">
-                Invite
+                Add
               </Button>
             </span>
           ) : canInvite ? (
             <Button size="sm" onClick={onInvite} loading={isInviting}>
-              Invite
+              Add
             </Button>
           ) : (
             <Link
@@ -381,11 +381,11 @@ function DiscoverVendorsTab({
   const inviteMutation = useMutation({
     mutationFn: (vendorId: string) => serviceRequestsApi.createInvites(serviceRequestId!, [vendorId]),
     onSuccess: () => {
-      toast.success('Vendor invited');
+      toast.success('Vendor added');
       queryClient.invalidateQueries({ queryKey: ['service-requests', serviceRequestId, 'invites'] });
       queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
     },
-    onError: () => toast.error('Failed to invite vendor'),
+    onError: () => toast.error('Failed to add vendor'),
   });
 
   return (
@@ -614,7 +614,7 @@ function DiscoveredVendorCard({
                 </Link>
                 {canInvite && (
                   <Button size="sm" onClick={() => onInvite(vendor.existingVendorId!)} loading={isInviting}>
-                    Invite
+                    Add
                   </Button>
                 )}
               </div>
@@ -627,7 +627,7 @@ function DiscoveredVendorCard({
               </span>
               {canInvite && addedVendorId && (
                 <Button size="sm" onClick={() => onInvite(addedVendorId)} loading={isInviting}>
-                  Invite
+                  Add
                 </Button>
               )}
             </div>

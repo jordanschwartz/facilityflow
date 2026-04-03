@@ -9,7 +9,9 @@ import { serviceRequestsApi } from '../../api/serviceRequests';
 import { quotesApi } from '../../api/quotes';
 import { proposalsApi } from '../../api/proposals';
 import { invoicesApi } from '../../api/invoices';
+import { workOrdersApi } from '../../api/workOrders';
 import FindVendorsModal from '../../components/vendors/FindVendorsModal';
+import ManualQuoteModal from '../../components/quotes/ManualQuoteModal';
 import ProposalBuilder from '../../components/proposals/ProposalBuilder';
 import ProposalDetail from '../../components/proposals/ProposalDetail';
 import type { ServiceRequestStatus, Quote } from '../../types';
@@ -29,6 +31,7 @@ import {
   CalendarDaysIcon,
   DocumentTextIcon,
   ArrowUpTrayIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/solid';
 import {
   ClockIcon,
@@ -38,6 +41,12 @@ import {
   CurrencyDollarIcon,
   InformationCircleIcon,
   ClipboardDocumentIcon,
+  ClipboardDocumentCheckIcon,
+  PaperAirplaneIcon,
+  DocumentArrowDownIcon,
+  EyeIcon,
+  EnvelopeIcon,
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
@@ -216,6 +225,11 @@ export default function RequestDetailPage() {
 
   // ── Schedule state ──
   const [scheduleDate, setScheduleDate] = useState('');
+  const [confirmSendWoVendorId, setConfirmSendWoVendorId] = useState<string | null>(null);
+
+  // ── Manual quote entry state ──
+  const [manualQuoteVendor, setManualQuoteVendor] = useState<{ id: string; name: string } | null>(null);
+  const [confirmAssignVendor, setConfirmAssignVendor] = useState<{ id: string; name: string; hasQuote?: boolean; quoteId?: string } | null>(null);
 
   // ══════════════════════════ QUERIES ══════════════════════════
   const { data: sr, isLoading } = useQuery({
@@ -271,8 +285,8 @@ export default function RequestDetailPage() {
 
   const selectQuote = useMutation({
     mutationFn: (quoteId: string) => quotesApi.updateStatus(quoteId, 'Selected'),
-    onSuccess: () => { toast.success('Quote selected'); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'quotes'] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
-    onError: () => toast.error('Failed to select quote'),
+    onSuccess: () => { toast.success('Vendor assigned'); setConfirmAssignVendor(null); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'quotes'] }); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'invites'] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
+    onError: () => toast.error('Failed to assign vendor'),
   });
 
   const updateDetails = useMutation({
@@ -291,6 +305,17 @@ export default function RequestDetailPage() {
     mutationFn: (date: string) => serviceRequestsApi.updateSchedule(id!, date),
     onSuccess: () => { toast.success('Schedule updated'); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
     onError: () => toast.error('Failed to update schedule'),
+  });
+
+  const sendWorkOrder = useMutation({
+    mutationFn: (vendorInviteId: string) => workOrdersApi.sendWorkOrder(id!, vendorInviteId),
+    onSuccess: (_data, vendorInviteId) => {
+      const invite = invites?.find(i => i.id === vendorInviteId);
+      toast.success(`Work order sent to ${invite?.vendor?.companyName ?? 'vendor'}`);
+      queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'invites'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
+    },
+    onError: () => toast.error('Failed to send work order'),
   });
 
   // ── Forms ──
@@ -439,31 +464,95 @@ export default function RequestDetailPage() {
               {/* Vendor Invites */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-gray-900">Vendor Invites</h2>
+                  <h2 className="text-base font-semibold text-gray-900">Vendors</h2>
                   {isOperator && (
-                    <Button size="sm" onClick={() => setFindVendorsOpen(true)}>Find Vendor</Button>
+                    <Button size="sm" onClick={() => setFindVendorsOpen(true)}>Add Vendors</Button>
                   )}
                 </div>
                 {(invites ?? []).length === 0 ? (
-                  <p className="text-sm text-gray-500">No vendors invited yet.</p>
+                  <p className="text-sm text-gray-500">No vendors added yet.</p>
                 ) : (
                   <div className="overflow-hidden rounded-lg border border-gray-200">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead><tr className="bg-gray-100 border-b border-gray-300">
                         <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trades</th>
                         <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                         <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quote</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Sent</th>
+                        {isOperator && <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Work Order Actions</th>}
                       </tr></thead>
                       <tbody className="divide-y divide-gray-100 bg-white">
                         {invites?.map((inv, idx) => (
                           <tr key={inv.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
                             <td className="px-4 py-2.5 text-sm font-medium text-gray-900">{inv.vendor?.companyName}</td>
-                            <td className="px-4 py-2.5"><div className="flex flex-wrap gap-1">{inv.vendor?.trades.map(t => <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{t}</span>)}</div></td>
                             <td className="px-4 py-2.5"><StatusBadge status={inv.status} /></td>
                             <td className="px-4 py-2.5 text-sm text-gray-600">{inv.quote?.price != null ? formatCurrency(inv.quote.price) : '---'}</td>
-                            <td className="px-4 py-2.5 text-sm text-gray-500">{formatDate(inv.sentAt)}</td>
+                            {isOperator && (
+                              <td className="px-4 py-2.5">
+                                {(() => {
+                                  const canEmail = inv.status !== 'Selected' && inv.status !== 'Rejected';
+                                  const canQuoteLink = !!inv.quote?.id;
+                                  const canAssign = inv.status !== 'Selected' && inv.status !== 'Rejected';
+                                  return (
+                                    <div className="flex items-center gap-1 flex-nowrap">
+                                      {/* Email */}
+                                      <button
+                                        className={`p-1.5 rounded-md transition-colors ${canEmail ? 'text-blue-500 hover:bg-blue-50 hover:text-blue-700 cursor-pointer' : 'text-gray-200 cursor-not-allowed'}`}
+                                        title={!canEmail ? 'Not available' : inv.status === 'Candidate' ? 'Send work order' : 'Resend work order'}
+                                        disabled={!canEmail}
+                                        onClick={() => canEmail && setConfirmSendWoVendorId(inv.id)}
+                                      >
+                                        <EnvelopeIcon className="w-5 h-5" />
+                                      </button>
+                                      {/* Preview PDF */}
+                                      <button
+                                        className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer"
+                                        title="Preview work order PDF"
+                                        onClick={async () => {
+                                          try {
+                                            const res = await workOrdersApi.previewWorkOrderPdf(id!, inv.id);
+                                            const blob = new Blob([res.data], { type: 'application/pdf' });
+                                            const url = URL.createObjectURL(blob);
+                                            window.open(url, '_blank');
+                                          } catch {
+                                            toast.error('Failed to load PDF preview');
+                                          }
+                                        }}
+                                      >
+                                        <EyeIcon className="w-5 h-5" />
+                                      </button>
+                                      {/* Quote link */}
+                                      <button
+                                        className={`p-1.5 rounded-md transition-colors ${canQuoteLink ? 'text-amber-500 hover:bg-amber-50 hover:text-amber-700 cursor-pointer' : 'text-gray-200 cursor-not-allowed'}`}
+                                        title={canQuoteLink ? 'Copy quote submission link' : 'Quote link not available yet'}
+                                        disabled={!canQuoteLink}
+                                        onClick={() => {
+                                          if (!canQuoteLink) return;
+                                          const quoteLink = `${window.location.origin}/quotes/submit/${inv.publicToken}`;
+                                          navigator.clipboard.writeText(quoteLink);
+                                          toast.success('Quote link copied');
+                                        }}
+                                      >
+                                        <LinkIcon className="w-5 h-5" />
+                                      </button>
+                                      {/* Assign */}
+                                      <button
+                                        className={`p-1.5 rounded-md transition-colors ${canAssign ? 'text-orange-500 hover:bg-orange-50 hover:text-orange-600 cursor-pointer' : 'text-gray-200 cursor-not-allowed'}`}
+                                        title={!canAssign ? 'Already assigned' : inv.quote?.status === 'Submitted' ? 'Assign vendor' : 'Enter quote & assign vendor'}
+                                        disabled={!canAssign}
+                                        onClick={() => canAssign && setConfirmAssignVendor({
+                                          id: inv.id,
+                                          name: inv.vendor?.companyName ?? 'Vendor',
+                                          hasQuote: inv.quote?.status === 'Submitted',
+                                          quoteId: inv.quote?.id,
+                                        })}
+                                      >
+                                        <CheckCircleIcon className="w-5 h-5" />
+                                      </button>
+                                    </div>
+                                  );
+                                })()}
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -495,6 +584,90 @@ export default function RequestDetailPage() {
                 requiredTrade={sr.category ?? ''}
                 serviceRequestId={id}
               />
+
+              {/* Manual Quote Entry Modal */}
+              <ManualQuoteModal
+                isOpen={!!manualQuoteVendor}
+                onClose={() => setManualQuoteVendor(null)}
+                serviceRequestId={id!}
+                vendorInviteId={manualQuoteVendor?.id ?? ''}
+                vendorName={manualQuoteVendor?.name ?? ''}
+              />
+
+              {/* Confirm Send Work Order Dialog */}
+              {confirmSendWoVendorId && (() => {
+                const inv = invites?.find(i => i.id === confirmSendWoVendorId);
+                const isResend = inv?.status !== 'Candidate';
+                return (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="fixed inset-0 bg-black/30" onClick={() => setConfirmSendWoVendorId(null)} />
+                    <div className="relative bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {isResend ? 'Resend Work Order?' : 'Send Work Order?'}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-1">
+                        {isResend
+                          ? `This will resend the work order and email to ${inv?.vendor?.companyName ?? 'this vendor'}.`
+                          : `This will generate a work order PDF and send it via email to ${inv?.vendor?.companyName ?? 'this vendor'}.`}
+                      </p>
+                      {inv?.vendor?.email && (
+                        <p className="text-sm text-gray-500 mb-4">
+                          Email will be sent to <strong>{inv.vendor.email}</strong>
+                        </p>
+                      )}
+                      <div className="flex justify-end gap-3">
+                        <Button variant="secondary" onClick={() => setConfirmSendWoVendorId(null)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          loading={sendWorkOrder.isPending}
+                          onClick={() => {
+                            sendWorkOrder.mutate(confirmSendWoVendorId, {
+                              onSuccess: () => setConfirmSendWoVendorId(null),
+                            });
+                          }}
+                        >
+                          <PaperAirplaneIcon className="w-3.5 h-3.5 mr-1" />
+                          {isResend ? 'Resend' : 'Send Work Order'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Confirm Assign Vendor Dialog */}
+              {confirmAssignVendor && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                  <div className="fixed inset-0 bg-black/30" onClick={() => setConfirmAssignVendor(null)} />
+                  <div className="relative bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Assign {confirmAssignVendor.name}?</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      {confirmAssignVendor.hasQuote
+                        ? `This will select ${confirmAssignVendor.name}'s quote and assign them to this work order.`
+                        : `No quote on file. You'll enter quote details on behalf of this vendor.`}
+                    </p>
+                    <div className="flex justify-end gap-3">
+                      <Button variant="secondary" onClick={() => setConfirmAssignVendor(null)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        loading={selectQuote.isPending}
+                        onClick={() => {
+                          if (confirmAssignVendor.hasQuote && confirmAssignVendor.quoteId) {
+                            selectQuote.mutate(confirmAssignVendor.quoteId);
+                          } else {
+                            setManualQuoteVendor({ id: confirmAssignVendor.id, name: confirmAssignVendor.name });
+                            setConfirmAssignVendor(null);
+                          }
+                        }}
+                      >
+                        {confirmAssignVendor.hasQuote ? 'Assign' : 'Enter Quote'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
