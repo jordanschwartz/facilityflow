@@ -342,17 +342,6 @@ export default function RequestDetailPage() {
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <span className="text-sm text-gray-500">{sr.client?.companyName}</span>
             <span className="inline-flex items-center gap-1 text-sm text-gray-500"><MapPinIcon className="w-3.5 h-3.5" />{sr.location}</span>
-            <PriorityBadge priority={sr.priority} />
-            {isOperator && allowedTransitions && allowedTransitions.length > 0 && (
-              <select
-                value=""
-                onChange={e => { if (e.target.value) updateStatus.mutate(e.target.value as ServiceRequestStatus); }}
-                className="border border-gray-300 rounded-lg text-xs px-2 py-1 focus:ring-brand-500 focus:border-brand-500 bg-white"
-              >
-                <option value="">Move to...</option>
-                {allowedTransitions.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>)}
-              </select>
-            )}
             {alerts.map(a => <span key={a.text} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${a.color}`}><ExclamationTriangleIcon className="w-3 h-3" />{a.text}</span>)}
           </div>
         </div>
@@ -674,7 +663,23 @@ export default function RequestDetailPage() {
           {/* Status Card */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Status</h3>
-            <StatusBadge status={sr.status} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatusBadge status={sr.status} />
+              {isOperator && allowedTransitions && allowedTransitions.length > 0 && (
+                <select
+                  value=""
+                  onChange={e => { if (e.target.value) updateStatus.mutate(e.target.value as ServiceRequestStatus); }}
+                  className="border border-gray-300 rounded-lg text-xs px-2 py-1 focus:ring-brand-500 focus:border-brand-500 bg-white"
+                >
+                  <option value="">Move to...</option>
+                  {allowedTransitions.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>)}
+                </select>
+              )}
+            </div>
+            <div className="mt-3">
+              <p className="text-xs text-gray-500 mb-1">Priority</p>
+              <PriorityBadge priority={sr.priority} />
+            </div>
           </div>
 
           {/* Key Info Card */}
