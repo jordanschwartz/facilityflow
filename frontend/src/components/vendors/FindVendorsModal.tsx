@@ -101,27 +101,30 @@ function LocalVendorsTab({
   isOpen: boolean;
 }) {
   const queryClient = useQueryClient();
+  // Extract just the zip code from the location string, or leave blank
+  const extractZip = (location: string) => {
+    const match = location.match(/\b(\d{5})\b/);
+    return match ? match[1] : '';
+  };
+
   const [tradeFilter, setTradeFilter] = useState(requiredTrade ?? '');
   const [nameSearch, setNameSearch] = useState('');
-  const [zip, setZip] = useState(serviceRequestZip);
+  const [zip, setZip] = useState(extractZip(serviceRequestZip));
   const [radius, setRadius] = useState(25);
 
   const { data: vendors, isLoading } = useQuery({
     queryKey: ['vendors', 'nearby', zip, tradeFilter, radius, nameSearch],
     queryFn: () =>
       vendorsApi.getNearbyVendors(
-        zip,
-        radius,
+        zip || undefined,
+        zip ? radius : undefined,
         tradeFilter || undefined,
         nameSearch || undefined,
       ).then(r => r.data),
-    enabled: isOpen && !!zip,
+    enabled: isOpen,
   });
 
-  // Client-side name filter fallback in case backend doesn't support search param
-  const filtered = nameSearch && vendors
-    ? vendors.filter(v => v.companyName.toLowerCase().includes(nameSearch.toLowerCase()))
-    : vendors;
+  const filtered = vendors;
 
   const inviteMutation = useMutation({
     mutationFn: (vendorId: string) => serviceRequestsApi.createInvites(serviceRequestId!, [vendorId]),
@@ -188,8 +191,12 @@ function LocalVendorsTab({
       </div>
 
       <p className="text-xs text-gray-500">
-        Searching near ZIP <span className="font-medium text-gray-700">{zip}</span>
+        {zip
+          ? <>Searching near ZIP <span className="font-medium text-gray-700">{zip}</span> within {radius} miles</>
+          : <>Showing all vendors</>
+        }
         {tradeFilter && <> for <span className="font-medium text-gray-700">{tradeFilter}</span></>}
+        {nameSearch && <> matching "<span className="font-medium text-gray-700">{nameSearch}</span>"</>}
       </p>
 
       {/* Results */}

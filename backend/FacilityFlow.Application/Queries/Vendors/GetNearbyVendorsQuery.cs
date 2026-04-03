@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FacilityFlow.Application.Queries.Vendors;
 
-public record GetNearbyVendorsQuery(string Zip, int RadiusMiles, string? Trade) : IRequest<List<VendorSourcingResultDto>>;
+public record GetNearbyVendorsQuery(string? Zip, int RadiusMiles, string? Trade, string? Search) : IRequest<List<VendorSourcingResultDto>>;
 
 public class GetNearbyVendorsQueryHandler : IRequestHandler<GetNearbyVendorsQuery, List<VendorSourcingResultDto>>
 {
@@ -28,33 +28,60 @@ public class GetNearbyVendorsQueryHandler : IRequestHandler<GetNearbyVendorsQuer
 
     public async Task<List<VendorSourcingResultDto>> Handle(GetNearbyVendorsQuery request, CancellationToken cancellationToken)
     {
-        var searchCoords = await _geocodingService.GeocodeZipAsync(request.Zip);
-        if (searchCoords is null)
-            return [];
+        var hasZip = !string.IsNullOrWhiteSpace(request.Zip);
+        double? searchLat = null, searchLng = null;
 
-        var (searchLat, searchLng) = searchCoords.Value;
+        if (hasZip)
+        {
+            var searchCoords = await _geocodingService.GeocodeZipAsync(request.Zip!);
+            if (searchCoords is null)
+                return [];
+            (searchLat, searchLng) = searchCoords.Value;
+        }
 
         var query = _vendorRepo.Query()
-            .Where(v => v.Latitude.HasValue && v.Longitude.HasValue)
             .Where(v => v.Status == VendorStatus.Active || v.Status == VendorStatus.Prospect);
 
         if (!string.IsNullOrWhiteSpace(request.Trade))
             query = query.Where(v => v.Trades.Contains(request.Trade));
 
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.ToLower();
+            query = query.Where(v => v.CompanyName.ToLower().Contains(search)
+                || v.PrimaryContactName.ToLower().Contains(search));
+        }
+
+        // If no ZIP, only require coordinates for distance filtering
+        if (hasZip)
+            query = query.Where(v => v.Latitude.HasValue && v.Longitude.HasValue);
+
         var vendors = await query.ToListAsync(cancellationToken);
 
-        // Calculate Haversine distance in-memory and filter by radius
-        var nearbyVendors = vendors
-            .Select(v => new
-            {
-                Vendor = v,
-                Distance = HaversineDistanceMiles(searchLat, searchLng, v.Latitude!.Value, v.Longitude!.Value)
-            })
-            .Where(x => x.Distance <= request.RadiusMiles && x.Distance <= x.Vendor.ServiceRadiusMiles)
-            .OrderBy(x => x.Distance)
-            .ToList();
+        List<(Vendor Vendor, double? Distance)> resultVendors;
 
-        var vendorIds = nearbyVendors.Select(x => x.Vendor.Id).ToList();
+        if (hasZip)
+        {
+            // Radius search: calculate distance and filter
+            resultVendors = vendors
+                .Select(v => (
+                    Vendor: v,
+                    Distance: (double?)HaversineDistanceMiles(searchLat!.Value, searchLng!.Value, v.Latitude!.Value, v.Longitude!.Value)
+                ))
+                .Where(x => x.Distance <= request.RadiusMiles && x.Distance <= x.Vendor.ServiceRadiusMiles)
+                .OrderBy(x => x.Distance)
+                .ToList();
+        }
+        else
+        {
+            // No ZIP: return all matching vendors, no distance filtering
+            resultVendors = vendors
+                .OrderBy(v => v.CompanyName)
+                .Select(v => (Vendor: v, Distance: (double?)null))
+                .ToList();
+        }
+
+        var vendorIds = resultVendors.Select(x => x.Vendor.Id).ToList();
 
         var workOrderStats = await _workOrderRepo.Query()
             .Where(wo => vendorIds.Contains(wo.VendorId))
@@ -69,7 +96,7 @@ public class GetNearbyVendorsQueryHandler : IRequestHandler<GetNearbyVendorsQuer
 
         var statsMap = workOrderStats.ToDictionary(s => s.VendorId);
 
-        return nearbyVendors.Select(x =>
+        return resultVendors.Select(x =>
         {
             statsMap.TryGetValue(x.Vendor.Id, out var stats);
             return new VendorSourcingResultDto(
@@ -84,7 +111,7 @@ public class GetNearbyVendorsQueryHandler : IRequestHandler<GetNearbyVendorsQuer
                 x.Vendor.DnuReason,
                 stats?.CompletedJobCount ?? 0,
                 stats?.LastUsedDate,
-                Math.Round(x.Distance, 1)
+                x.Distance.HasValue ? Math.Round(x.Distance.Value, 1) : null
             );
         }).ToList();
     }

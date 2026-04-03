@@ -71,14 +71,12 @@ public class VendorsController : ControllerBase
     [HttpGet("nearby")]
     [Authorize(Roles = "Operator")]
     public async Task<IActionResult> GetNearby(
-        [FromQuery] string zip,
+        [FromQuery] string? zip = null,
         [FromQuery] int radiusMiles = 50,
-        [FromQuery] string? trade = null)
+        [FromQuery] string? trade = null,
+        [FromQuery] string? search = null)
     {
-        if (string.IsNullOrWhiteSpace(zip))
-            return BadRequest(new { error = "zip is required." });
-
-        var result = await _mediator.Send(new GetNearbyVendorsQuery(zip, radiusMiles, trade));
+        var result = await _mediator.Send(new GetNearbyVendorsQuery(zip, radiusMiles, trade, search));
         return Ok(result);
     }
 
