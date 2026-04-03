@@ -315,7 +315,7 @@ export default function RequestDetailPage() {
       {/* ════════════════════ HEADER ════════════════════ */}
       <button onClick={() => navigate('/work-orders')} className="text-sm text-gray-500 hover:text-gray-700 mb-3 flex items-center gap-1">&larr; Back to Work Orders</button>
 
-      <div className="flex items-start justify-between mb-4">
+      <div className={`flex items-start justify-between mb-4 ${sr.priority === 'Urgent' ? 'border-l-4 border-red-500 pl-4' : ''}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900 truncate">
@@ -678,7 +678,15 @@ export default function RequestDetailPage() {
             </div>
             <div className="mt-3">
               <p className="text-xs text-gray-500 mb-1">Priority</p>
-              <PriorityBadge priority={sr.priority} />
+              <div className="flex items-center gap-2">
+                {sr.priority === 'Urgent' && (
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                )}
+                <PriorityBadge priority={sr.priority} />
+              </div>
             </div>
           </div>
 
