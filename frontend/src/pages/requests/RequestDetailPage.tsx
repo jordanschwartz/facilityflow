@@ -37,6 +37,7 @@ import {
   UserGroupIcon,
   CurrencyDollarIcon,
   InformationCircleIcon,
+  ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
@@ -317,8 +318,19 @@ export default function RequestDetailPage() {
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
           {sr.workOrderNumber && (
-            <span className="inline-block mb-2 px-4 py-1.5 bg-gray-900 text-white text-sm font-mono font-semibold rounded-md tracking-wide">
+            <span className="inline-flex items-center gap-2 mb-2 px-3 py-1.5 bg-gray-100 border border-gray-300 text-gray-700 text-sm font-mono font-semibold rounded-md tracking-wide">
               {sr.workOrderNumber}
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(sr.workOrderNumber!);
+                  toast.success('Copied to clipboard');
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Copy work order number"
+              >
+                <ClipboardDocumentIcon className="w-4 h-4" />
+              </button>
             </span>
           )}
           <h1 className="text-2xl font-bold text-gray-900 truncate">
