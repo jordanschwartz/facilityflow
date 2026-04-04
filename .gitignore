@@ -10,8 +10,7 @@ appsettings.Development.json
 # Frontend
 node_modules/
 dist/
-.env.local
-.env.production
+.env*
 
 # OS
 .DS_Store
