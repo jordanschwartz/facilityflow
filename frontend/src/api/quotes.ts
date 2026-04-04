@@ -33,4 +33,6 @@ export const quotesApi = {
     apiClient.delete(`/quotes/submit/${token}/attachments/${attachmentId}`),
   manualEntry: (data: ManualQuoteEntryRequest) =>
     apiClient.post<Quote>('/quotes/manual-entry', data),
+  unselect: (serviceRequestId: string) =>
+    apiClient.post(`/service-requests/${serviceRequestId}/quotes/unselect`),
 };

@@ -16,12 +16,14 @@ public class UpdateQuoteStatusCommandHandler : IRequestHandler<UpdateQuoteStatus
 {
     private readonly IQuoteRepository _quotes;
     private readonly IRepository<ServiceRequest> _serviceRequests;
+    private readonly IRepository<VendorInvite> _vendorInvites;
     private readonly IActivityLogger _activityLogger;
 
-    public UpdateQuoteStatusCommandHandler(IQuoteRepository quotes, IRepository<ServiceRequest> serviceRequests, IActivityLogger activityLogger)
+    public UpdateQuoteStatusCommandHandler(IQuoteRepository quotes, IRepository<ServiceRequest> serviceRequests, IRepository<VendorInvite> vendorInvites, IActivityLogger activityLogger)
     {
         _quotes = quotes;
         _serviceRequests = serviceRequests;
+        _vendorInvites = vendorInvites;
         _activityLogger = activityLogger;
     }
 
@@ -42,6 +44,18 @@ public class UpdateQuoteStatusCommandHandler : IRequestHandler<UpdateQuoteStatus
                 .ToListAsync(cancellationToken);
             foreach (var other in otherQuotes)
                 other.Status = QuoteStatus.Rejected;
+
+            // Mark the selected vendor's invite as Selected, others as Rejected
+            var allInvites = await _vendorInvites.Query()
+                .Where(vi => vi.ServiceRequestId == quote.ServiceRequestId)
+                .ToListAsync(cancellationToken);
+            foreach (var inv in allInvites)
+            {
+                if (inv.VendorId == quote.VendorId)
+                    inv.Status = VendorInviteStatus.Selected;
+                else if (inv.Status != VendorInviteStatus.Rejected)
+                    inv.Status = VendorInviteStatus.Rejected;
+            }
 
             // Transition SR to PendingApproval
             var sr = await _serviceRequests.GetByIdAsync(quote.ServiceRequestId);

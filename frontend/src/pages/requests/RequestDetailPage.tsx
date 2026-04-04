@@ -290,6 +290,12 @@ export default function RequestDetailPage() {
     onError: () => toast.error('Failed to assign vendor'),
   });
 
+  const unselectQuote = useMutation({
+    mutationFn: () => quotesApi.unselect(id!),
+    onSuccess: () => { toast.success('Vendor unassigned'); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'quotes'] }); queryClient.invalidateQueries({ queryKey: ['service-requests', id, 'invites'] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
+    onError: () => toast.error('Failed to unassign vendor'),
+  });
+
   const updateDetails = useMutation({
     mutationFn: (data: DetailsForm) => serviceRequestsApi.update(id!, data),
     onSuccess: () => { toast.success('Details saved'); queryClient.invalidateQueries({ queryKey: ['service-requests', id] }); queryClient.invalidateQueries({ queryKey: ['activity-logs'] }); },
@@ -540,20 +546,34 @@ export default function RequestDetailPage() {
                                       >
                                         <LinkIcon className="w-5 h-5" />
                                       </button>
-                                      {/* Assign */}
-                                      <button
-                                        className={`p-1.5 rounded-md transition-colors ${canAssign ? 'text-orange-500 hover:bg-orange-50 hover:text-orange-600 cursor-pointer' : 'text-gray-200 cursor-not-allowed'}`}
-                                        title={!canAssign ? 'Already assigned' : inv.quote?.status === 'Submitted' ? 'Assign vendor' : 'Enter quote & assign vendor'}
-                                        disabled={!canAssign}
-                                        onClick={() => canAssign && setConfirmAssignVendor({
-                                          id: inv.id,
-                                          name: inv.vendor?.companyName ?? 'Vendor',
-                                          hasQuote: inv.quote?.status === 'Submitted',
-                                          quoteId: inv.quote?.id,
-                                        })}
-                                      >
-                                        <CheckCircleIcon className="w-5 h-5" />
-                                      </button>
+                                      {/* Assign / Unassign */}
+                                      {inv.status === 'Selected' ? (
+                                        <button
+                                          className="p-1.5 rounded-md transition-colors text-red-400 hover:bg-red-50 hover:text-red-600 cursor-pointer"
+                                          title="Unassign vendor"
+                                          onClick={() => {
+                                            if (confirm(`Unassign ${inv.vendor?.companyName ?? 'this vendor'}?`)) {
+                                              unselectQuote.mutate();
+                                            }
+                                          }}
+                                        >
+                                          <XMarkIcon className="w-5 h-5" />
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className={`p-1.5 rounded-md transition-colors ${canAssign ? 'text-orange-500 hover:bg-orange-50 hover:text-orange-600 cursor-pointer' : 'text-gray-200 cursor-not-allowed'}`}
+                                          title={!canAssign ? 'Not available' : inv.quote?.status === 'Submitted' ? 'Assign vendor' : 'Enter quote & assign vendor'}
+                                          disabled={!canAssign}
+                                          onClick={() => canAssign && setConfirmAssignVendor({
+                                            id: inv.id,
+                                            name: inv.vendor?.companyName ?? 'Vendor',
+                                            hasQuote: inv.quote?.status === 'Submitted',
+                                            quoteId: inv.quote?.id,
+                                          })}
+                                        >
+                                          <CheckCircleIcon className="w-5 h-5" />
+                                        </button>
+                                      )}
                                     </div>
                                   );
                                 })()}

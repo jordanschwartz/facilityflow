@@ -64,6 +64,14 @@ public class QuotesController : ControllerBase
     public async Task<IActionResult> SubmitByToken(string token, [FromBody] SubmitQuoteRequest req)
         => Ok(await _mediator.Send(new SubmitQuoteByTokenCommand(token, req)));
 
+    [HttpPost("api/service-requests/{serviceRequestId:guid}/quotes/unselect")]
+    [HasPermission(Permission.EditWorkOrders)]
+    public async Task<IActionResult> UnselectQuote(Guid serviceRequestId)
+    {
+        await _mediator.Send(new UnselectQuoteCommand(serviceRequestId));
+        return NoContent();
+    }
+
     [HttpPost("api/quotes/manual-entry")]
     [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> ManualEntry([FromBody] ManualQuoteEntryRequest req)
