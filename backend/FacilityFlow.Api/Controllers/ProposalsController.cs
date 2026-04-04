@@ -1,6 +1,8 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Application.Commands.Proposals;
 using FacilityFlow.Application.DTOs.Proposals;
 using FacilityFlow.Application.Queries.Proposals;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Interfaces.Repositories;
 using FacilityFlow.Core.Interfaces.Services;
 using MediatR;
@@ -26,7 +28,7 @@ public class ProposalsController : ControllerBase
     }
 
     [HttpPost("api/service-requests/{serviceRequestId:guid}/proposals")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateProposals)]
     public async Task<IActionResult> Create(Guid serviceRequestId, [FromBody] CreateProposalRequest req)
     {
         var result = await _mediator.Send(new CreateProposalCommand(serviceRequestId, req));
@@ -34,7 +36,7 @@ public class ProposalsController : ControllerBase
     }
 
     [HttpGet("api/service-requests/{serviceRequestId:guid}/proposals")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateProposals)]
     public async Task<IActionResult> GetByServiceRequest(Guid serviceRequestId)
     {
         var result = await _mediator.Send(new GetProposalByServiceRequestQuery(serviceRequestId));
@@ -43,7 +45,7 @@ public class ProposalsController : ControllerBase
     }
 
     [HttpGet("api/proposals/{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateProposals)]
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _mediator.Send(new GetProposalByIdQuery(id));
@@ -51,7 +53,7 @@ public class ProposalsController : ControllerBase
     }
 
     [HttpPut("api/proposals/{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateProposals)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProposalRequest req)
     {
         var result = await _mediator.Send(new UpdateProposalCommand(id, req));
@@ -59,7 +61,7 @@ public class ProposalsController : ControllerBase
     }
 
     [HttpPost("api/proposals/{id:guid}/send")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateProposals)]
     public async Task<IActionResult> Send(Guid id)
     {
         var result = await _mediator.Send(new SendProposalCommand(id));
@@ -67,7 +69,7 @@ public class ProposalsController : ControllerBase
     }
 
     [HttpPost("api/proposals/{id:guid}/generate-summary")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateProposals)]
     public async Task<IActionResult> GenerateSummary(Guid id, [FromBody] GenerateSummaryRequest req)
     {
         var result = await _mediator.Send(new GenerateProposalSummaryCommand(id, req));
@@ -90,7 +92,7 @@ public class ProposalsController : ControllerBase
     }
 
     [HttpGet("api/proposals/{id:guid}/versions")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateProposals)]
     public async Task<IActionResult> GetVersions(Guid id)
     {
         var result = await _mediator.Send(new GetProposalVersionsQuery(id));
@@ -98,7 +100,7 @@ public class ProposalsController : ControllerBase
     }
 
     [HttpGet("api/proposals/{id:guid}/pdf")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateProposals)]
     public async Task<IActionResult> GeneratePdf(Guid id)
     {
         var pdf = await _pdfService.GenerateAsync(id);

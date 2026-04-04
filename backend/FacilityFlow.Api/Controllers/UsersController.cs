@@ -1,7 +1,9 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Api.Extensions;
 using FacilityFlow.Application.Commands.Users;
 using FacilityFlow.Application.DTOs.Users;
 using FacilityFlow.Application.Queries.Users;
+using FacilityFlow.Core.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -46,7 +48,7 @@ public class UsersController : ControllerBase
     // ── Admin endpoints ───────────────────────────────────────────────────────
 
     [HttpGet]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageUsers)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
         [FromQuery] int page = 1,
@@ -57,7 +59,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageUsers)]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest req)
     {
         var result = await _mediator.Send(new CreateUserCommand(req));
@@ -65,7 +67,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageUsers)]
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _mediator.Send(new GetUserByIdQuery(id));
@@ -73,7 +75,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageUsers)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest req)
     {
         var result = await _mediator.Send(new UpdateUserCommand(id, req));
@@ -81,10 +83,22 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/reset-password")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageUsers)]
     public async Task<IActionResult> ResetPassword(Guid id)
     {
         var result = await _mediator.Send(new ResetUserPasswordCommand(id));
+        return Ok(result);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [HasPermission(Permission.ManageUsers)]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var currentUserId = User.GetUserId();
+        if (id == currentUserId)
+            return BadRequest(new { error = "Cannot delete your own account." });
+
+        var result = await _mediator.Send(new DeleteUserCommand(id));
         return Ok(result);
     }
 }

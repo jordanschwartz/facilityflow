@@ -24,6 +24,6 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDet
 
     internal static UserDetailDto ToDetailDto(User u) => new(
         u.Id, u.FirstName, u.LastName, u.Email,
-        u.Status.ToString(), u.IsAdmin, u.Role.ToString(),
+        u.Status.ToString(), u.Role.ToString(),
         u.CreatedAt, u.LastLoginAt, u.UpdatedAt, u.PasswordChangedAt);
 }

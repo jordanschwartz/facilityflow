@@ -16,6 +16,7 @@ const schema = z.object({
     val => !val || val.length >= 8,
     { message: 'Password must be at least 8 characters' }
   ),
+  role: z.enum(['Admin', 'Operator']),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -25,6 +26,7 @@ export default function UserNewPage() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { role: 'Operator' },
   });
 
   const createMutation = useMutation({
@@ -33,6 +35,7 @@ export default function UserNewPage() {
       lastName: data.lastName,
       email: data.email,
       password: data.password || undefined,
+      role: data.role,
     }),
     onSuccess: (res) => {
       toast.success('User created successfully');
@@ -67,6 +70,13 @@ export default function UserNewPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input type="email" {...register('email')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2" />
             {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select {...register('role')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2">
+              <option value="Operator">Operator</option>
+              <option value="Admin">Admin</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>

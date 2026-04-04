@@ -12,13 +12,23 @@ import Button from '../../components/ui/Button';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
 import { formatDate, formatDateTime } from '../../utils/formatters';
-import { PencilIcon } from '@heroicons/react/24/outline';
+import Badge from '../../components/ui/Badge';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useAuthStore } from '../../stores/authStore';
+
+const roleColors: Record<string, string> = {
+  Admin: 'bg-purple-100 text-purple-700',
+  Operator: 'bg-blue-100 text-blue-700',
+  Client: 'bg-gray-100 text-gray-700',
+  Vendor: 'bg-green-100 text-green-700',
+};
 
 const schema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Valid email required'),
   status: z.enum(['Active', 'Inactive']),
+  role: z.enum(['Admin', 'Operator', 'Client', 'Vendor']),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -28,6 +38,8 @@ export default function UserDetailPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const currentUser = useAuthStore((s) => s.user);
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['users', id],
@@ -37,7 +49,7 @@ export default function UserDetailPage() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
-    values: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email, status: user.status } : undefined,
+    values: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email, status: user.status, role: user.role } : undefined,
   });
 
   const updateMutation = useMutation({
@@ -48,6 +60,15 @@ export default function UserDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['users', id] });
     },
     onError: () => toast.error('Failed to update user'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => usersApi.delete(id!),
+    onSuccess: () => {
+      toast.success('User deactivated');
+      navigate('/admin/users');
+    },
+    onError: () => toast.error('Failed to deactivate user'),
   });
 
   const resetPasswordMutation = useMutation({
@@ -90,6 +111,14 @@ export default function UserDetailPage() {
             >
               Reset Password
             </Button>
+            {currentUser?.id !== id && user?.status === 'Active' && (
+              <Button
+                variant="danger"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <TrashIcon className="w-4 h-4 mr-1" /> Deactivate
+              </Button>
+            )}
           </div>
         }
       />
@@ -113,6 +142,22 @@ export default function UserDetailPage() {
         </div>
       )}
 
+      {/* Deactivate Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Deactivate User</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to deactivate <span className="font-medium">{user.firstName} {user.lastName}</span>? They will no longer be able to log in.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+              <Button variant="danger" onClick={() => deleteMutation.mutate()} loading={deleteMutation.isPending}>Deactivate</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
@@ -129,6 +174,10 @@ export default function UserDetailPage() {
                 <div>
                   <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</dt>
                   <dd className="mt-1 text-sm text-gray-900">{user.email}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Role</dt>
+                  <dd className="mt-1"><Badge label={user.role} className={roleColors[user.role] ?? 'bg-gray-100 text-gray-700'} /></dd>
                 </div>
                 <div>
                   <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</dt>
@@ -154,12 +203,21 @@ export default function UserDetailPage() {
                   <input type="email" {...register('email')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2" />
                   {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select {...register('status')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <select {...register('role')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2">
+                      <option value="Admin">Admin</option>
+                      <option value="Operator">Operator</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select {...register('status')} className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2">
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
                 </div>
                 <Button type="submit" loading={isSubmitting || updateMutation.isPending}>Save Changes</Button>
               </form>

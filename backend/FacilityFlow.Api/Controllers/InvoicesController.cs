@@ -1,6 +1,8 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Application.Commands.Invoices;
 using FacilityFlow.Application.DTOs.Invoices;
 using FacilityFlow.Application.Queries.Invoices;
+using FacilityFlow.Core.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +11,7 @@ namespace FacilityFlow.Api.Controllers;
 
 [ApiController]
 [Route("api/invoices")]
-[Authorize(Roles = "Operator")]
+[HasPermission(Permission.SendInvoices)]
 public class InvoicesController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -10,6 +10,10 @@ public static class ClaimsPrincipalExtensions
     public static string GetRole(this ClaimsPrincipal user) =>
         user.FindFirstValue(ClaimTypes.Role)!;
 
-    public static bool GetIsAdmin(this ClaimsPrincipal user) =>
-        bool.TryParse(user.FindFirstValue("is_admin"), out var isAdmin) && isAdmin;
+    public static List<string> GetPermissions(this ClaimsPrincipal user)
+    {
+        var claim = user.FindFirstValue("permissions");
+        if (string.IsNullOrEmpty(claim)) return new List<string>();
+        return claim.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToList();
+    }
 }

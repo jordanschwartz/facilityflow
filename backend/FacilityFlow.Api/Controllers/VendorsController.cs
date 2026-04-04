@@ -1,7 +1,9 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Api.Extensions;
 using FacilityFlow.Application.Commands.Vendors;
 using FacilityFlow.Application.DTOs.Vendors;
 using FacilityFlow.Application.Queries.Vendors;
+using FacilityFlow.Core.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +22,7 @@ public class VendorsController : ControllerBase
     // ── Vendor CRUD ───────────────────────────────────────────────────────────
 
     [HttpGet]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? trade,
         [FromQuery] string? zip,
@@ -35,7 +37,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _mediator.Send(new GetVendorByIdQuery(id));
@@ -43,7 +45,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> Create([FromBody] CreateVendorRequest req)
     {
         var result = await _mediator.Send(new CreateVendorCommand(req));
@@ -51,7 +53,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVendorRequest req)
     {
         var result = await _mediator.Send(new UpdateVendorCommand(id, req));
@@ -59,7 +61,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/dnu")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> ToggleDnu(Guid id, [FromBody] ToggleDnuRequest req)
     {
         var result = await _mediator.Send(new ToggleVendorDnuCommand(id, req));
@@ -69,7 +71,7 @@ public class VendorsController : ControllerBase
     // ── Nearby / Sourcing ─────────────────────────────────────────────────────
 
     [HttpGet("nearby")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> GetNearby(
         [FromQuery] string? zip = null,
         [FromQuery] int radiusMiles = 50,
@@ -83,7 +85,7 @@ public class VendorsController : ControllerBase
     // ── Vendor Discovery ─────────────────────────────────────────────────────
 
     [HttpGet("discover")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> Discover(
         [FromQuery] string trade,
         [FromQuery] string zip,
@@ -97,7 +99,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpPost("prospects")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> AddProspect([FromBody] AddProspectVendorRequest req)
     {
         var result = await _mediator.Send(new AddProspectVendorCommand(req));
@@ -105,7 +107,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/promote")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> Promote(Guid id)
     {
         var result = await _mediator.Send(new PromoteVendorCommand(id));
@@ -115,7 +117,7 @@ public class VendorsController : ControllerBase
     // ── Notes ─────────────────────────────────────────────────────────────────
 
     [HttpGet("{id:guid}/notes")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> GetNotes(Guid id)
     {
         var result = await _mediator.Send(new GetVendorNotesQuery(id));
@@ -123,7 +125,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/notes")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> CreateNote(Guid id, [FromBody] CreateVendorNoteRequest req)
     {
         var userId = User.GetUserId();
@@ -132,7 +134,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/notes/{noteId:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> DeleteNote(Guid id, Guid noteId)
     {
         var userId = User.GetUserId();
@@ -144,7 +146,7 @@ public class VendorsController : ControllerBase
     // ── Payments ──────────────────────────────────────────────────────────────
 
     [HttpGet("{id:guid}/payments")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> GetPayments(Guid id)
     {
         var result = await _mediator.Send(new GetVendorPaymentsQuery(id));
@@ -152,7 +154,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/payments")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> CreatePayment(Guid id, [FromBody] CreateVendorPaymentRequest req)
     {
         var result = await _mediator.Send(new CreateVendorPaymentCommand(id, req));
@@ -160,7 +162,7 @@ public class VendorsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/payments/{paymentId:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.ManageVendors)]
     public async Task<IActionResult> UpdatePayment(Guid id, Guid paymentId, [FromBody] UpdateVendorPaymentRequest req)
     {
         var result = await _mediator.Send(new UpdateVendorPaymentCommand(id, paymentId, req));

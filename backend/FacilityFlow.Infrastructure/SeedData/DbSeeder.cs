@@ -56,8 +56,7 @@ public static class DbSeeder
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
                 FirstName = "Admin",
                 LastName = "Operator",
-                Role = UserRole.Operator,
-                IsAdmin = true,
+                Role = UserRole.Admin,
                 Status = UserStatus.Active,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

@@ -15,8 +15,10 @@ public class User
     public string Name => $"{FirstName} {LastName}";
 
     public UserRole Role { get; set; }
-    public bool IsAdmin { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
+
+    [NotMapped]
+    public bool IsAdminRole => Role == UserRole.Admin;
     public DateTime? LastLoginAt { get; set; }
     public DateTime? PasswordChangedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

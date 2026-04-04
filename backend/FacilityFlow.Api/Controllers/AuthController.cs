@@ -1,5 +1,7 @@
 using FacilityFlow.Api.Extensions;
+using FacilityFlow.Core.Authorization;
 using FacilityFlow.Core.DTOs.Auth;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,5 +30,20 @@ public class AuthController : ControllerBase
         var userId = User.GetUserId();
         var result = await _authService.GetMeAsync(userId);
         return Ok(result);
+    }
+
+    [HttpGet("permissions")]
+    [Authorize]
+    public IActionResult GetPermissions()
+    {
+        var role = User.GetRole();
+        if (!Enum.TryParse<UserRole>(role, true, out var userRole))
+            return Ok(new { permissions = Array.Empty<string>() });
+
+        var permissions = RolePermissions.GetPermissions(userRole)
+            .Select(p => p.ToString())
+            .ToList();
+
+        return Ok(new { permissions });
     }
 }

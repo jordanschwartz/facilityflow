@@ -1,8 +1,10 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Api.Extensions;
 using FacilityFlow.Application.Commands.ServiceRequests;
 using FacilityFlow.Application.DTOs.ServiceRequests;
 using FacilityFlow.Application.DTOs.VendorInvites;
 using FacilityFlow.Application.Queries.ServiceRequests;
+using FacilityFlow.Core.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +34,7 @@ public class ServiceRequestsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.CreateWorkOrders)]
     public async Task<IActionResult> Create([FromBody] CreateServiceRequestRequest req)
     {
         var userId = User.GetUserId();
@@ -48,7 +50,7 @@ public class ServiceRequestsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateServiceRequestRequest req)
     {
         var result = await _mediator.Send(new UpdateServiceRequestCommand(id, req));
@@ -56,7 +58,7 @@ public class ServiceRequestsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateServiceRequestStatusRequest req)
     {
         var result = await _mediator.Send(new UpdateServiceRequestStatusCommand(id, req));
@@ -64,7 +66,7 @@ public class ServiceRequestsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/invites")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.SendWorkOrders)]
     public async Task<IActionResult> CreateInvites(Guid id, [FromBody] CreateVendorInvitesRequest req)
     {
         var result = await _mediator.Send(new CreateVendorInvitesCommand(id, req));
@@ -72,7 +74,7 @@ public class ServiceRequestsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/invites")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> GetInvites(Guid id)
     {
         var result = await _mediator.Send(new GetVendorInvitesQuery(id));
@@ -80,7 +82,7 @@ public class ServiceRequestsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/upload-po")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     [RequestSizeLimit(104_857_600)]
     public async Task<IActionResult> UploadPo(Guid id, [FromForm] string poNumber, [FromForm] decimal? poAmount, IFormFile file)
     {
@@ -90,7 +92,7 @@ public class ServiceRequestsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/schedule")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> UpdateSchedule(Guid id, [FromBody] UpdateScheduleCommand cmd)
     {
         var result = await _mediator.Send(new UpdateScheduleCommand(id, cmd.ScheduledDate));

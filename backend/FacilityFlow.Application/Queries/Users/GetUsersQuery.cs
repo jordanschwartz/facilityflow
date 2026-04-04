@@ -37,7 +37,7 @@ public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PagedResult<U
 
         var dtos = items.Select(u => new UserListDto(
             u.Id, u.FirstName, u.LastName, u.Email,
-            u.Status.ToString(), u.IsAdmin, u.Role.ToString(),
+            u.Status.ToString(), u.Role.ToString(),
             u.CreatedAt, u.LastLoginAt)).ToList();
 
         return new PagedResult<UserListDto>(dtos, total, request.Page, request.PageSize);

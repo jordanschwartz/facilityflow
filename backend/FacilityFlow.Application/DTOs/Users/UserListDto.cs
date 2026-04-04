@@ -6,7 +6,6 @@ public record UserListDto(
     string LastName,
     string Email,
     string Status,
-    bool IsAdmin,
     string Role,
     DateTime CreatedAt,
     DateTime? LastLoginAt);

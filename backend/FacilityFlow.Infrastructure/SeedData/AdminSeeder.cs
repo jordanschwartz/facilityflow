@@ -21,8 +21,7 @@ public static class AdminSeeder
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
                 FirstName = "Admin",
                 LastName = "Operator",
-                Role = UserRole.Operator,
-                IsAdmin = true,
+                Role = UserRole.Admin,
                 Status = UserStatus.Active,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -30,9 +29,10 @@ public static class AdminSeeder
             db.Users.Add(admin);
             await db.SaveChangesAsync();
         }
-        else if (!existing.IsAdmin)
+        else if (existing.Role != UserRole.Admin)
         {
-            existing.IsAdmin = true;
+            // TODO: Migration needed to: UPDATE Users SET Role = 'Admin' WHERE IsAdmin = true; then DROP COLUMN IsAdmin
+            existing.Role = UserRole.Admin;
             await db.SaveChangesAsync();
         }
     }

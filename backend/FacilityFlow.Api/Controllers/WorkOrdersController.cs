@@ -1,7 +1,9 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Application.Commands.ServiceRequests;
 using FacilityFlow.Application.Commands.WorkOrders;
 using FacilityFlow.Application.DTOs.WorkOrders;
 using FacilityFlow.Application.Queries.WorkOrders;
+using FacilityFlow.Core.Enums;
 using FacilityFlow.Core.Interfaces.Repositories;
 using FacilityFlow.Core.Interfaces.Services;
 using FacilityFlow.Core.Entities;
@@ -29,7 +31,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? status,
         [FromQuery] Guid? vendorId,
@@ -48,7 +50,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Roles = "Operator,Vendor")]
+    [Authorize]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateWorkOrderStatusRequest req)
     {
         var result = await _mediator.Send(new UpdateWorkOrderStatusCommand(id, req));
@@ -56,7 +58,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/attachments")]
-    [Authorize(Roles = "Operator,Vendor")]
+    [Authorize]
     [RequestSizeLimit(104_857_600)]
     public async Task<IActionResult> UploadAttachment(Guid id, IFormFile file)
     {
@@ -67,7 +69,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/attachments/{attachmentId:guid}")]
-    [Authorize(Roles = "Operator,Vendor")]
+    [Authorize]
     public async Task<IActionResult> DeleteAttachment(Guid id, Guid attachmentId)
     {
         await _mediator.Send(new DeleteWorkOrderAttachmentCommand(id, attachmentId));
@@ -75,7 +77,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPost("{serviceRequestId:guid}/send")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.SendWorkOrders)]
     public async Task<IActionResult> SendWorkOrder(Guid serviceRequestId, [FromBody] SendWorkOrderRequest req)
     {
         var result = await _mediator.Send(new SendWorkOrderToVendorCommand(serviceRequestId, req.VendorInviteId));
@@ -83,7 +85,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet("{serviceRequestId:guid}/preview-pdf")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.SendWorkOrders)]
     public async Task<IActionResult> PreviewPdf(Guid serviceRequestId, [FromQuery] Guid vendorInviteId)
     {
         var pdf = await _pdfService.GeneratePdfAsync(serviceRequestId, vendorInviteId);

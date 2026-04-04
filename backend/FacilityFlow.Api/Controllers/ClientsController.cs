@@ -1,6 +1,8 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Application.Commands.Clients;
 using FacilityFlow.Application.DTOs.Clients;
 using FacilityFlow.Application.Queries.Clients;
+using FacilityFlow.Core.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +19,7 @@ public class ClientsController : ControllerBase
     public ClientsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
         [FromQuery] int page = 1,
@@ -28,7 +30,7 @@ public class ClientsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> Create([FromBody] CreateClientRequest req)
     {
         var result = await _mediator.Send(new CreateClientCommand(req));
@@ -36,7 +38,7 @@ public class ClientsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _mediator.Send(new GetClientByIdQuery(id));
@@ -44,7 +46,7 @@ public class ClientsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateClientRequest req)
     {
         var result = await _mediator.Send(new UpdateClientCommand(id, req));

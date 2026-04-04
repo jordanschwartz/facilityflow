@@ -1,6 +1,8 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Application.Commands.Quotes;
 using FacilityFlow.Application.DTOs.Quotes;
 using FacilityFlow.Application.Queries.Quotes;
+using FacilityFlow.Core.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,12 +19,12 @@ public class QuotesController : ControllerBase
         => _mediator = mediator;
 
     [HttpGet("api/service-requests/{serviceRequestId:guid}/quotes")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> GetQuotes(Guid serviceRequestId)
         => Ok(await _mediator.Send(new GetQuotesByServiceRequestQuery(serviceRequestId)));
 
     [HttpPost("api/service-requests/{serviceRequestId:guid}/quotes")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> CreateQuote(Guid serviceRequestId, [FromBody] SubmitQuoteRequest req)
     {
         var result = await _mediator.Send(new CreateQuoteCommand(serviceRequestId, req));
@@ -30,7 +32,7 @@ public class QuotesController : ControllerBase
     }
 
     [HttpPatch("api/quotes/{id:guid}/status")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateQuoteStatusRequest req)
         => Ok(await _mediator.Send(new UpdateQuoteStatusCommand(id, req)));
 
@@ -63,7 +65,7 @@ public class QuotesController : ControllerBase
         => Ok(await _mediator.Send(new SubmitQuoteByTokenCommand(token, req)));
 
     [HttpPost("api/quotes/manual-entry")]
-    [Authorize(Roles = "Operator")]
+    [HasPermission(Permission.EditWorkOrders)]
     public async Task<IActionResult> ManualEntry([FromBody] ManualQuoteEntryRequest req)
     {
         var quoteId = await _mediator.Send(new ManualQuoteEntryCommand(

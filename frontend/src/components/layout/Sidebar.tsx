@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { HomeIcon, WrenchScrewdriverIcon, BuildingOfficeIcon, UserGroupIcon, BanknotesIcon, UsersIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: HomeIcon },
@@ -14,7 +15,8 @@ const navItems = [
 export default function Sidebar() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'Operator' || user?.isAdmin;
+  const { hasPermission } = usePermissions();
+  const canManageUsers = hasPermission('ManageUsers');
   const [collapsed, setCollapsed] = useState(true);
 
   return (
@@ -47,7 +49,7 @@ export default function Sidebar() {
             {!collapsed && label}
           </NavLink>
         ))}
-        {isAdmin && (
+        {canManageUsers && (
           <NavLink
             to="/admin/users"
             title={collapsed ? 'User Management' : undefined}

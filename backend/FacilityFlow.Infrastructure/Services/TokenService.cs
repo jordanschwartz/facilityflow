@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using FacilityFlow.Core.Authorization;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Interfaces.Services;
 using Microsoft.Extensions.Configuration;
@@ -20,13 +21,16 @@ public class TokenService : ITokenService
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expiry = int.Parse(_config["Jwt:ExpiryHours"] ?? "8");
 
+        var permissions = RolePermissions.GetPermissions(user.Role);
+        var permissionsClaim = string.Join(",", permissions.Select(p => p.ToString()));
+
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Name, user.Name),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim("is_admin", user.IsAdmin.ToString().ToLower()),
+            new Claim("permissions", permissionsClaim),
         };
 
         var token = new JwtSecurityToken(

@@ -1,3 +1,3 @@
 namespace FacilityFlow.Core.Enums;
 
-public enum UserRole { Operator, Client, Vendor }
+public enum UserRole { Admin, Operator, Client, Vendor }

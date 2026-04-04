@@ -44,7 +44,6 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, UserD
             FirstName = req.FirstName,
             LastName = req.LastName,
             Role = role,
-            IsAdmin = role == UserRole.Operator,
             Status = UserStatus.Active,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

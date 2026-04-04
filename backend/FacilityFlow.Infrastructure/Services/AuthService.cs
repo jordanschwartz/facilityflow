@@ -24,8 +24,8 @@ public class AuthService : IAuthService
         if (await _db.Users.AnyAsync(u => u.Email == req.Email.ToLower().Trim()))
             throw new InvalidOperationException("Email already registered.");
 
-        if (req.Role == UserRole.Operator)
-            throw new ForbiddenException("Cannot self-register as Operator.");
+        if (req.Role == UserRole.Admin || req.Role == UserRole.Operator)
+            throw new ForbiddenException("Cannot self-register as Admin or Operator.");
 
         var user = new User
         {
@@ -79,7 +79,7 @@ public class AuthService : IAuthService
         user.LastName,
         user.Name,
         user.Role.ToString(),
-        user.IsAdmin,
+        user.IsAdminRole,
         user.Status.ToString(),
         user.CreatedAt);
 }

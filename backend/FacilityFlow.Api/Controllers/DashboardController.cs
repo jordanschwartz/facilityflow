@@ -1,4 +1,6 @@
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Application.Queries.Dashboard;
+using FacilityFlow.Core.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +9,7 @@ namespace FacilityFlow.Api.Controllers;
 
 [ApiController]
 [Route("api/dashboard")]
-[Authorize(Roles = "Operator")]
+[HasPermission(Permission.CreateWorkOrders)]
 public class DashboardController : ControllerBase
 {
     private readonly IMediator _mediator;

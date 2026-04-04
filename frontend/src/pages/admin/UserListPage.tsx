@@ -7,8 +7,16 @@ import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
 import StatusBadge from '../../components/ui/StatusBadge';
+import Badge from '../../components/ui/Badge';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { formatDate, formatRelativeTime } from '../../utils/formatters';
+
+const roleColors: Record<string, string> = {
+  Admin: 'bg-purple-100 text-purple-700',
+  Operator: 'bg-blue-100 text-blue-700',
+  Client: 'bg-gray-100 text-gray-700',
+  Vendor: 'bg-green-100 text-green-700',
+};
 
 export default function UserListPage() {
   const navigate = useNavigate();
@@ -78,7 +86,7 @@ export default function UserListPage() {
                     <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
                   </td>
                   <td className="px-4 py-2.5 text-sm text-gray-600">{user.email}</td>
-                  <td className="px-4 py-2.5 text-sm text-gray-600">{user.role}</td>
+                  <td className="px-4 py-2.5"><Badge label={user.role} className={roleColors[user.role] ?? 'bg-gray-100 text-gray-700'} /></td>
                   <td className="px-4 py-2.5"><StatusBadge status={user.status} /></td>
                   <td className="px-4 py-2.5 text-sm text-gray-600">{formatDate(user.createdAt)}</td>
                   <td className="px-4 py-2.5 text-sm text-gray-600">{user.lastLoginAt ? formatRelativeTime(user.lastLoginAt) : 'Never'}</td>

@@ -36,6 +36,14 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
         user.LastName = req.LastName;
         user.Email = emailNormalized;
         user.Status = status;
+
+        if (!string.IsNullOrWhiteSpace(req.Role))
+        {
+            if (!Enum.TryParse<UserRole>(req.Role, true, out var newRole))
+                throw new InvalidOperationException($"Invalid role: {req.Role}");
+            user.Role = newRole;
+        }
+
         user.UpdatedAt = DateTime.UtcNow;
 
         await _repo.SaveChangesAsync();

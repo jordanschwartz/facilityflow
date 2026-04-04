@@ -5,9 +5,11 @@ using FacilityFlow.Application;
 using FacilityFlow.Infrastructure;
 using FacilityFlow.Infrastructure.Persistence;
 using FacilityFlow.Infrastructure.SeedData;
+using FacilityFlow.Api.Authorization;
 using FacilityFlow.Core.Enums;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -75,7 +77,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    foreach (var permission in Enum.GetValues<Permission>())
+    {
+        options.AddPolicy(permission.ToString(), policy =>
+            policy.Requirements.Add(new PermissionRequirement(permission)));
+    }
+});
 
 // ---- FluentValidation ----
 builder.Services.AddFluentValidationAutoValidation();

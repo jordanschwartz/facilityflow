@@ -1,4 +1,4 @@
-export type UserRole = 'Operator' | 'Client' | 'Vendor';
+export type UserRole = 'Admin' | 'Operator' | 'Client' | 'Vendor';
 export type Priority = 'Low' | 'Medium' | 'High' | 'Urgent';
 export type ServiceRequestStatus = 'New' | 'Qualifying' | 'Sourcing' | 'SchedulingSiteVisit' | 'ScheduleConfirmed' | 'PendingQuotes' | 'ProposalReady' | 'PendingApproval' | 'AwaitingPO' | 'POReceived' | 'JobInProgress' | 'JobCompleted' | 'Verification' | 'InvoiceSent' | 'InvoicePaid' | 'Closed' | 'Cancelled';
 export type QuoteStatus = 'Requested' | 'Submitted' | 'Reviewed' | 'Selected' | 'Rejected';
@@ -35,9 +35,8 @@ export interface UserListItem {
   firstName: string;
   lastName: string;
   email: string;
-  role: string;
+  role: UserRole;
   status: 'Active' | 'Inactive';
-  isAdmin: boolean;
   createdAt: string;
   lastLoginAt: string | null;
 }
@@ -52,6 +51,7 @@ export interface CreateUserRequest {
   lastName: string;
   email: string;
   password?: string;
+  role?: UserRole;
 }
 
 export interface UpdateUserRequest {
@@ -59,6 +59,7 @@ export interface UpdateUserRequest {
   lastName: string;
   email: string;
   status: 'Active' | 'Inactive';
+  role?: UserRole;
 }
 
 export interface UpdateProfileRequest {
