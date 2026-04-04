@@ -146,7 +146,7 @@ public static class EmailTemplates
 
     public static (string Subject, string HtmlBody) ProposalSent(
         string clientName, string workOrderNumber, string jobTitle,
-        string proposalTotal, string viewProposalUrl, string approveProposalUrl)
+        string proposalTotal, string viewProposalUrl)
     {
         var subject = $"[{workOrderNumber}] Proposal Ready for Review \u2013 {jobTitle}";
 
@@ -156,8 +156,7 @@ public static class EmailTemplates
                 ("Work Order #", workOrderNumber),
                 ("Job Title", jobTitle),
                 ("Proposal Total", proposalTotal))
-            + PrimaryButton("Approve Proposal", approveProposalUrl)
-            + SecondaryButton("View Proposal Details", viewProposalUrl);
+            + PrimaryButton("View Proposal", viewProposalUrl);
 
         return (subject, Layout(content));
     }

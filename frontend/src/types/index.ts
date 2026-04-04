@@ -306,7 +306,7 @@ export interface ClientProposal {
   clientResponse?: string;
   clientRespondedAt?: string;
   attachments: { id: string; fileName: string; filePath: string }[];
-  serviceRequest: { title: string; location: string; category: string };
+  serviceRequest: { title: string; location: string; category: string; workOrderNumber?: string | null };
   lineItems: ProposalLineItem[];
   proposalNumber: string | null;
 }

@@ -164,7 +164,7 @@ function QuoteDetailModal({ quote, open, onClose }: { quote: Quote; open: boolea
 }
 
 // ─── QuoteCard ────────────────────────────────────────────────────────────────
-function QuoteCard({ quote, isOperator, selectQuote }: { quote: Quote; isOperator: boolean; selectQuote: { mutate: (id: string) => void; isPending: boolean } }) {
+function QuoteCard({ quote, isOperator, selectQuote, isSelected }: { quote: Quote; isOperator: boolean; selectQuote: { mutate: (id: string) => void; isPending: boolean }; isSelected?: boolean }) {
   const [detailOpen, setDetailOpen] = useState(false);
   return (
     <div className="border border-gray-200 rounded-xl bg-white shadow-sm p-4">
@@ -188,7 +188,8 @@ function QuoteCard({ quote, isOperator, selectQuote }: { quote: Quote; isOperato
           {quote.publicToken && quote.status === 'Requested' && (
             <Button size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/quotes/submit/${quote.publicToken}`); toast.success('Link copied'); }}>Copy Link</Button>
           )}
-          {quote.status === 'Submitted' && <Button size="sm" onClick={() => selectQuote.mutate(quote.id)} loading={selectQuote.isPending}>Select</Button>}
+          {quote.status === 'Submitted' && !isSelected && <Button size="sm" onClick={() => selectQuote.mutate(quote.id)} loading={selectQuote.isPending}>Select</Button>}
+          {isSelected && <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-1"><CheckCircleIcon className="w-3.5 h-3.5" />Selected</span>}
         </div>
       )}
       <QuoteDetailModal quote={quote} open={detailOpen} onClose={() => setDetailOpen(false)} />
@@ -575,7 +576,11 @@ export default function RequestDetailPage() {
                     <p className="text-sm text-gray-500">No quotes yet. Quotes will appear here as vendors submit them.</p>
                   ) : (
                     <div className="space-y-4">
-                      {receivedQuotes.map(q => <QuoteCard key={q.id} quote={q} isOperator={isOperator} selectQuote={selectQuote} />)}
+                      {receivedQuotes.map(q => {
+                        const vendorInvite = invites?.find(i => i.vendorId === q.vendorId);
+                        const isSelected = q.status === 'Selected' || vendorInvite?.status === 'Selected';
+                        return <QuoteCard key={q.id} quote={q} isOperator={isOperator} selectQuote={selectQuote} isSelected={isSelected} />;
+                      })}
                     </div>
                   );
                 })()}

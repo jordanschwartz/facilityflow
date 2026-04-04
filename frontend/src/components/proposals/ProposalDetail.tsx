@@ -81,6 +81,7 @@ export default function ProposalDetail({ proposal, serviceRequestId, onEdit }: P
       title: proposal.serviceRequest?.title ?? '',
       location: '',
       category: '',
+      workOrderNumber: proposal.serviceRequest?.workOrderNumber,
     },
     proposalNumber: proposal.proposalNumber,
     lineItems: proposal.lineItems ?? [],

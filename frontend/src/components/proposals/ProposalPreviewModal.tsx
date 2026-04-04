@@ -20,7 +20,7 @@ interface PreviewProposal {
   estimatedDuration: string | null;
   termsAndConditions: string | null;
   attachments: PreviewAttachment[];
-  serviceRequest: { title: string; location: string; category: string };
+  serviceRequest: { title: string; location: string; category: string; workOrderNumber?: string | null };
   proposalNumber?: string | null;
   lineItems?: ProposalLineItem[];
 }

@@ -29,4 +29,5 @@ public record ClientProposalAttachmentDto(
 public record ClientProposalServiceRequestDto(
     string Title,
     string Location,
-    string Category);
+    string Category,
+    string? WorkOrderNumber = null);

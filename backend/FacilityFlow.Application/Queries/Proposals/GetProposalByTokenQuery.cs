@@ -32,7 +32,8 @@ public class GetProposalByTokenQueryHandler : IRequestHandler<GetProposalByToken
         var serviceRequestDto = new ClientProposalServiceRequestDto(
             proposal.ServiceRequest.Title,
             proposal.ServiceRequest.Location,
-            proposal.ServiceRequest.Category);
+            proposal.ServiceRequest.Category,
+            proposal.ServiceRequest.WorkOrderNumber);
 
         return new ClientProposalDto(
             proposal.Id,

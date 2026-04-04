@@ -100,11 +100,10 @@ public class SendProposalCommandHandler : IRequestHandler<SendProposalCommand, P
         var woNum = sr.WorkOrderNumber ?? $"WO-{sr.Id.ToString("N")[..8].ToUpper()}";
         var baseUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
         var viewUrl = $"{baseUrl}/proposals/view/{proposal.PublicToken}";
-        var approveUrl = $"{baseUrl}/proposals/view/{proposal.PublicToken}?action=approve";
 
         var (emailSubject, emailHtml) = EmailTemplates.ProposalSent(
             client.ContactName, woNum, sr.Title,
-            proposal.Price.ToString("C"), viewUrl, approveUrl);
+            proposal.Price.ToString("C"), viewUrl);
 
         var pdfBytes = await _pdfService.GenerateAsync(proposal.Id);
         var proposalNum = proposal.ProposalNumber ?? $"P-{proposal.Id.ToString("N")[..8].ToUpper()}";
