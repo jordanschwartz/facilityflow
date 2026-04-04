@@ -54,6 +54,11 @@ export default function VendorDetailPage() {
   const [editing, setEditing] = useState(false);
   const [trades, setTrades] = useState<string[]>([]);
   const [tradeInput, setTradeInput] = useState('');
+  const { data: servicesData } = useQuery({
+    queryKey: ['services'],
+    queryFn: () => serviceRequestsApi.getServices(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   // DNU modal state
   const [dnuModalOpen, setDnuModalOpen] = useState(false);
@@ -397,10 +402,13 @@ export default function VendorDetailPage() {
                       </span>
                     ))}
                   </div>
-                  <input type="text" value={tradeInput} onChange={e => setTradeInput(e.target.value)}
+                  <input type="text" list="vendor-edit-service-options" autoComplete="off" value={tradeInput} onChange={e => setTradeInput(e.target.value)}
                     onKeyDown={e => handleTagKeyDown(e, tradeInput, setTradeInput, trades, setTrades)}
                     className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
                     placeholder="Add service (Enter to add)" />
+                  <datalist id="vendor-edit-service-options">
+                    {(servicesData?.data ?? []).filter(s => !trades.includes(s)).map(s => <option key={s} value={s} />)}
+                  </datalist>
                 </div>
 
                 <div className="flex items-center gap-3">

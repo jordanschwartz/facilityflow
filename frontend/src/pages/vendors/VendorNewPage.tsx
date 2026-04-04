@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { serviceRequestsApi } from '../../api/serviceRequests';
 import toast from 'react-hot-toast';
 import { vendorsApi } from '../../api/vendors';
 import Button from '../../components/ui/Button';
@@ -27,6 +28,11 @@ export default function VendorNewPage() {
   const navigate = useNavigate();
   const [trades, setTrades] = useState<string[]>([]);
   const [tradeInput, setTradeInput] = useState('');
+  const { data: servicesData } = useQuery({
+    queryKey: ['services'],
+    queryFn: () => serviceRequestsApi.getServices(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -130,12 +136,17 @@ export default function VendorNewPage() {
               </div>
               <input
                 type="text"
+                list="vendor-service-options"
+                autoComplete="off"
                 value={tradeInput}
                 onChange={e => setTradeInput(e.target.value)}
                 onKeyDown={e => handleTagKeyDown(e, tradeInput, setTradeInput, trades, setTrades)}
                 className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
                 placeholder="e.g. HVAC, Electrical..."
               />
+              <datalist id="vendor-service-options">
+                {(servicesData?.data ?? []).filter(s => !trades.includes(s)).map(s => <option key={s} value={s} />)}
+              </datalist>
             </div>
 
             <div className="mt-4 flex items-center gap-3">

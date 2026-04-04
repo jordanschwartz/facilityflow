@@ -252,6 +252,12 @@ export default function RequestDetailPage() {
     enabled: !!id && activeTab === 'vendors',
   });
 
+  const { data: servicesData } = useQuery({
+    queryKey: ['services'],
+    queryFn: () => serviceRequestsApi.getServices(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: quotes } = useQuery({
     queryKey: ['service-requests', id, 'quotes'],
     queryFn: () => serviceRequestsApi.getQuotes(id!).then(r => r.data),
@@ -445,7 +451,10 @@ export default function RequestDetailPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Service</label>
-                      <input {...registerDetails('category')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
+                      <input list="edit-service-options" autoComplete="off" {...registerDetails('category')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
+                      <datalist id="edit-service-options">
+                        {(servicesData?.data ?? []).map((c: string) => <option key={c} value={c} />)}
+                      </datalist>
                     </div>
                   </div>
                   <div>
