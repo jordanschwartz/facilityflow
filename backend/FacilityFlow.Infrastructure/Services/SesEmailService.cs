@@ -8,10 +8,12 @@ using MimeKit;
 
 namespace FacilityFlow.Infrastructure.Services;
 
-public class SesEmailService : IEmailService
+public class SesEmailService : IEmailService, IDisposable
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<SesEmailService> _logger;
+    private AmazonSimpleEmailServiceV2Client? _client;
+    private readonly object _lock = new();
 
     public SesEmailService(IConfiguration configuration, ILogger<SesEmailService> logger)
     {
@@ -19,40 +21,57 @@ public class SesEmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task SendEmailAsync(string to, string subject, string htmlBody, byte[]? attachment = null, string? attachmentName = null)
+    private AmazonSimpleEmailServiceV2Client GetClient()
     {
-        var fromAddress = _configuration["Aws:Ses:FromAddress"];
-        var fromName = _configuration["Aws:Ses:FromName"] ?? "FacilityFlow";
-        var region = _configuration["Aws:Ses:Region"] ?? "us-east-1";
+        if (_client != null) return _client;
 
-        if (string.IsNullOrWhiteSpace(fromAddress))
+        lock (_lock)
         {
-            _logger.LogWarning("SES FromAddress is not configured. Skipping email to {To}", to);
-            return;
-        }
+            if (_client != null) return _client;
 
-        // In dev, redirect all emails to the override recipient
-        var devOverride = _configuration["Aws:Ses:DevOverrideRecipient"];
-        var actualRecipient = to;
-        if (!string.IsNullOrWhiteSpace(devOverride))
-        {
-            _logger.LogInformation("Dev override active: redirecting email from {OriginalTo} to {DevTo}", to, devOverride);
-            subject = $"[DEV → {to}] {subject}";
-            actualRecipient = devOverride;
-        }
-
-        try
-        {
+            var region = _configuration["Aws:Ses:Region"] ?? "us-east-1";
             var profile = _configuration["Aws:Profile"];
-            var chain = !string.IsNullOrWhiteSpace(profile)
-                ? new Amazon.Runtime.CredentialManagement.CredentialProfileStoreChain()
-                : null;
+
             Amazon.Runtime.AWSCredentials? credentials = null;
-            if (chain != null && chain.TryGetAWSCredentials(profile!, out var creds))
-                credentials = creds;
-            using var client = credentials != null
+            if (!string.IsNullOrWhiteSpace(profile))
+            {
+                var chain = new Amazon.Runtime.CredentialManagement.CredentialProfileStoreChain();
+                if (chain.TryGetAWSCredentials(profile, out var creds))
+                    credentials = creds;
+            }
+
+            _client = credentials != null
                 ? new AmazonSimpleEmailServiceV2Client(credentials, RegionEndpoint.GetBySystemName(region))
                 : new AmazonSimpleEmailServiceV2Client(RegionEndpoint.GetBySystemName(region));
+
+            return _client;
+        }
+    }
+
+    public async Task SendEmailAsync(string to, string subject, string htmlBody, byte[]? attachment = null, string? attachmentName = null)
+    {
+        try
+        {
+            var fromAddress = _configuration["Aws:Ses:FromAddress"];
+            var fromName = _configuration["Aws:Ses:FromName"] ?? "FacilityFlow";
+
+            if (string.IsNullOrWhiteSpace(fromAddress))
+            {
+                _logger.LogWarning("SES FromAddress is not configured. Skipping email to {To}", to);
+                return;
+            }
+
+            // In dev, redirect all emails to the override recipient
+            var devOverride = _configuration["Aws:Ses:DevOverrideRecipient"];
+            var actualRecipient = to;
+            if (!string.IsNullOrWhiteSpace(devOverride))
+            {
+                _logger.LogInformation("Dev override active: redirecting email from {OriginalTo} to {DevTo}", to, devOverride);
+                subject = $"[DEV → {to}] {subject}";
+                actualRecipient = devOverride;
+            }
+
+            var client = GetClient();
 
             if (attachment is { Length: > 0 } && !string.IsNullOrWhiteSpace(attachmentName))
             {
@@ -128,5 +147,10 @@ public class SesEmailService : IEmailService
         };
 
         await client.SendEmailAsync(request);
+    }
+
+    public void Dispose()
+    {
+        _client?.Dispose();
     }
 }
