@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IProposalPdfService, ProposalPdfService>();
         services.AddScoped<IWorkOrderPdfService, WorkOrderPdfService>();
         services.AddSingleton<IEmailService, SesEmailService>();
+        services.AddScoped<IInboundEmailService, InboundEmailService>();
 
         return services;
     }

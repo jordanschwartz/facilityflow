@@ -150,13 +150,15 @@ public class SendWorkOrderToVendorCommandHandler : IRequestHandler<SendWorkOrder
         // Send email to vendor
         var baseUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
         var quoteUrl = $"{baseUrl}/quotes/submit/{quoteToken}";
-        var emailSubject = $"New Work Order \u2013 #{woNum} \u2013 {sr.Title}";
-        var emailHtml = EmailTemplates.WorkOrderEmail(
+        var viewUrl = $"{baseUrl}/work-orders/view/{invite.PublicToken}";
+        var (emailSubject, emailHtml) = EmailTemplates.WorkOrderDispatch(
             invite.Vendor.CompanyName, woNum, sr.Title,
-            sr.Location, sr.Priority.ToString(), quoteUrl);
+            sr.Location, sr.Priority.ToString(), sr.Description,
+            viewUrl, quoteUrl);
 
         var pdfFileName = $"{woNum}-{invite.Vendor.CompanyName.Replace(" ", "-")}.pdf";
-        await _emailService.SendEmailAsync(invite.Vendor.Email, emailSubject, emailHtml, pdfBytes, pdfFileName);
+        var replyTo = Helpers.EmailAddressing.GetReplyToAddress(woNum);
+        await _emailService.SendEmailAsync(invite.Vendor.Email, emailSubject, emailHtml, pdfBytes, pdfFileName, replyTo);
 
         return new SendWorkOrderResponse(invite.PublicToken!, pdfUrl);
     }

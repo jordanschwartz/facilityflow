@@ -423,6 +423,31 @@ export interface UpdateInvoiceRequest {
   amount?: number; description?: string; billToName?: string; billToEmail?: string; notes?: string;
 }
 
+export interface InboundEmail {
+  id: string;
+  serviceRequestId?: string;
+  fromAddress: string;
+  fromName?: string;
+  subject: string;
+  bodyPreview?: string;
+  receivedAt: string;
+  attachmentCount: number;
+}
+
+export interface InboundEmailAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+}
+
+export interface InboundEmailDetail extends InboundEmail {
+  bodyText?: string;
+  bodyHtml?: string;
+  messageId: string;
+  attachments: InboundEmailAttachment[];
+}
+
 export interface ManualQuoteEntryRequest {
   serviceRequestId: string;
   vendorInviteId: string;

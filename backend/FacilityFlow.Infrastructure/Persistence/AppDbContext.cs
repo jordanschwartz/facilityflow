@@ -28,6 +28,8 @@ public class AppDbContext : DbContext
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<WorkOrderDocument> WorkOrderDocuments => Set<WorkOrderDocument>();
+    public DbSet<InboundEmail> InboundEmails => Set<InboundEmail>();
+    public DbSet<InboundEmailAttachment> InboundEmailAttachments => Set<InboundEmailAttachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -152,6 +154,15 @@ public class AppDbContext : DbContext
             .HasOne(d => d.ServiceRequest).WithMany().HasForeignKey(d => d.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<WorkOrderDocument>()
             .HasOne(d => d.VendorInvite).WithMany().HasForeignKey(d => d.VendorInviteId).OnDelete(DeleteBehavior.Cascade);
+
+        // InboundEmail
+        modelBuilder.Entity<InboundEmail>().HasIndex(ie => ie.MessageId).IsUnique();
+        modelBuilder.Entity<InboundEmail>().HasIndex(ie => ie.ServiceRequestId);
+        modelBuilder.Entity<InboundEmail>().HasIndex(ie => ie.ReceivedAt);
+        modelBuilder.Entity<InboundEmail>()
+            .HasOne(ie => ie.ServiceRequest).WithMany().HasForeignKey(ie => ie.ServiceRequestId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<InboundEmailAttachment>()
+            .HasOne(a => a.InboundEmail).WithMany(ie => ie.Attachments).HasForeignKey(a => a.InboundEmailId).OnDelete(DeleteBehavior.Cascade);
 
         // ActivityLog
         modelBuilder.Entity<ActivityLog>().Property(a => a.Action).IsRequired();

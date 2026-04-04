@@ -23,6 +23,7 @@ import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import { formatDate, formatCurrency, formatRelativeTime } from '../../utils/formatters';
 import ActivityTimeline from '../../components/ActivityTimeline';
+import EmailList from '../../components/EmailList';
 import { useAuthStore } from '../../stores/authStore';
 import {
   PaperClipIcon,
@@ -69,11 +70,12 @@ const STATUS_LABELS: Record<string, string> = {
   Cancelled: 'Cancelled',
 };
 
-const TABS = ['timeline', 'details', 'vendors', 'proposal', 'po-scheduling', 'invoice'] as const;
+const TABS = ['timeline', 'details', 'emails', 'vendors', 'proposal', 'po-scheduling', 'invoice'] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABELS: Record<Tab, string> = {
   timeline: 'Timeline',
   details: 'Details',
+  emails: 'Emails',
   vendors: 'Vendors & Quotes',
   proposal: 'Proposal',
   'po-scheduling': 'PO & Scheduling',
@@ -407,6 +409,11 @@ export default function RequestDetailPage() {
           {/* ─── TIMELINE TAB ─── */}
           {activeTab === 'timeline' && (
             <ActivityTimeline serviceRequestId={id!} />
+          )}
+
+          {/* ─── EMAILS TAB ─── */}
+          {activeTab === 'emails' && (
+            <EmailList serviceRequestId={id!} />
           )}
 
           {/* ─── DETAILS TAB ─── */}

@@ -6,7 +6,8 @@ import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { activityLogsApi } from '../api/activityLogs';
 import { commentsApi } from '../api/comments';
-import type { ActivityLog, ActivityLogCategory, Comment } from '../types';
+import { inboundEmailsApi } from '../api/inboundEmails';
+import type { ActivityLog, ActivityLogCategory, Comment, InboundEmail, InboundEmailDetail } from '../types';
 import Button from './ui/Button';
 import { formatDateTime } from '../utils/formatters';
 import { PaperClipIcon, XMarkIcon } from '@heroicons/react/24/solid';
@@ -17,6 +18,10 @@ import {
   CurrencyDollarIcon,
   CogIcon,
   PencilSquareIcon,
+  EnvelopeIcon,
+  EnvelopeOpenIcon,
+  PaperAirplaneIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 
 const commentSchema = z.object({ text: z.string().min(1, 'Comment cannot be empty') });
@@ -27,12 +32,13 @@ interface ActivityTimelineProps {
   workOrderId?: string;
 }
 
-type FilterCategory = 'All' | ActivityLogCategory;
+type FilterCategory = 'All' | ActivityLogCategory | 'Email';
 
 const FILTER_OPTIONS: { label: string; value: FilterCategory }[] = [
   { label: 'All', value: 'All' },
   { label: 'Status Changes', value: 'StatusChange' },
   { label: 'Communications', value: 'Communication' },
+  { label: 'Emails', value: 'Email' },
   { label: 'Files', value: 'FileUpload' },
   { label: 'Financial', value: 'Financial' },
   { label: 'Notes', value: 'Note' },
@@ -67,13 +73,15 @@ const CATEGORY_ICONS: Record<ActivityLogCategory, React.ComponentType<React.SVGP
 
 interface TimelineEntry {
   id: string;
-  type: 'activity' | 'comment';
+  type: 'activity' | 'comment' | 'inbound-email';
   actorName: string;
   action: string;
-  category: ActivityLogCategory;
+  category: ActivityLogCategory | 'Email';
   createdAt: string;
   comment?: Comment;
+  inboundEmail?: InboundEmail;
   isHighlighted?: boolean;
+  isOutboundEmail?: boolean;
 }
 
 function renderAction(action: string): React.ReactNode {
@@ -129,10 +137,86 @@ function groupByDay(entries: TimelineEntry[]): { date: string; label: string; en
   }));
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function EmailDetailPanel({ emailId, onClose }: { emailId: string; onClose: () => void }) {
+  const { data: email, isLoading } = useQuery({
+    queryKey: ['inbound-email', emailId],
+    queryFn: () => inboundEmailsApi.get(emailId).then(r => r.data),
+  });
+
+  if (isLoading) return <div className="p-4 text-sm text-gray-500">Loading email...</div>;
+  if (!email) return <div className="p-4 text-sm text-gray-500">Email not found</div>;
+
+  return (
+    <div className="mt-3 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{email.subject}</p>
+          <p className="text-xs text-gray-500">
+            From: {email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromAddress}
+          </p>
+          <p className="text-xs text-gray-400">{formatDateTime(email.receivedAt)}</p>
+        </div>
+        <button onClick={onClose} className="ml-2 p-1 text-gray-400 hover:text-gray-600 flex-shrink-0">
+          <XMarkIcon className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="px-4 py-3">
+        {email.bodyHtml ? (
+          <iframe
+            srcDoc={email.bodyHtml}
+            title="Email body"
+            className="w-full border-0 min-h-[200px]"
+            sandbox="allow-same-origin"
+            onLoad={(e) => {
+              const iframe = e.target as HTMLIFrameElement;
+              if (iframe.contentDocument) {
+                iframe.style.height = iframe.contentDocument.body.scrollHeight + 'px';
+              }
+            }}
+          />
+        ) : email.bodyText ? (
+          <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">{email.bodyText}</pre>
+        ) : (
+          <p className="text-sm text-gray-400 italic">No email body</p>
+        )}
+      </div>
+
+      {email.attachments.length > 0 && (
+        <div className="px-4 py-3 border-t border-gray-100">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+            Attachments ({email.attachments.length})
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {email.attachments.map(att => (
+              <a
+                key={att.id}
+                href={inboundEmailsApi.getAttachmentDownloadUrl(email.id, att.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-700"
+              >
+                <ArrowDownTrayIcon className="w-3.5 h-3.5 text-gray-400" />
+                <span className="truncate max-w-[140px]">{att.fileName}</span>
+                <span className="text-gray-400">({formatFileSize(att.fileSize)})</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ActivityTimeline({ serviceRequestId, workOrderId }: ActivityTimelineProps) {
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CommentForm>({
@@ -151,6 +235,12 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
   const { data: comments } = useQuery({
     queryKey: ['comments', commentQueryParams],
     queryFn: () => commentsApi.list(commentQueryParams).then(r => r.data),
+  });
+
+  const { data: inboundEmailsData } = useQuery({
+    queryKey: ['inbound-emails', serviceRequestId],
+    queryFn: () => inboundEmailsApi.list(serviceRequestId, 1, 50).then(r => r.data),
+    enabled: !!serviceRequestId,
   });
 
   const createComment = useMutation({
@@ -185,19 +275,25 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
   const mergedEntries = useMemo(() => {
     const entries: TimelineEntry[] = [];
 
-    // Map activity logs
+    // Map activity logs — detect outbound emails (Communication category with email-related actions)
     (activityLogs ?? []).forEach(log => {
       const isHighlighted =
         (log.category === 'StatusChange' && log.action.toLowerCase().includes('completed')) ||
         log.category === 'Financial';
+      const isOutboundEmail = log.category === 'Communication' &&
+        (log.action.toLowerCase().includes('sent work order') ||
+         log.action.toLowerCase().includes('sent proposal') ||
+         log.action.toLowerCase().includes('sent email') ||
+         log.action.toLowerCase().includes('sent invoice'));
       entries.push({
         id: `log-${log.id}`,
         type: 'activity',
         actorName: log.actorName,
         action: log.action,
-        category: log.category,
+        category: isOutboundEmail ? 'Email' : log.category,
         createdAt: log.createdAt,
         isHighlighted,
+        isOutboundEmail,
       });
     });
 
@@ -214,15 +310,31 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
       });
     });
 
+    // Map inbound emails
+    (inboundEmailsData?.items ?? []).forEach(email => {
+      entries.push({
+        id: `email-${email.id}`,
+        type: 'inbound-email',
+        actorName: email.fromName || email.fromAddress,
+        action: email.subject,
+        category: 'Email',
+        createdAt: email.receivedAt,
+        inboundEmail: email,
+      });
+    });
+
     // Sort newest first
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // Filter
     if (activeFilter !== 'All') {
+      if (activeFilter === 'Email') {
+        return entries.filter(e => e.category === 'Email');
+      }
       return entries.filter(e => e.category === activeFilter);
     }
     return entries;
-  }, [activityLogs, comments, activeFilter]);
+  }, [activityLogs, comments, inboundEmailsData, activeFilter]);
 
   const dayGroups = useMemo(() => groupByDay(mergedEntries), [mergedEntries]);
 
@@ -322,9 +434,27 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
               </div>
               <div className="space-y-3">
                 {group.entries.map(entry => {
-                  const colors = CATEGORY_COLORS[entry.category];
+                  const isEmail = entry.category === 'Email';
+                  const isInboundEmail = entry.type === 'inbound-email';
                   const isSystem = entry.category === 'System';
-                  const IconComponent = CATEGORY_ICONS[entry.category];
+
+                  // Use email-specific colors or fall back to category colors
+                  const colors = isEmail
+                    ? (isInboundEmail
+                      ? { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-400' }
+                      : { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-400' })
+                    : CATEGORY_COLORS[entry.category as ActivityLogCategory];
+
+                  const IconComponent = isEmail
+                    ? (isInboundEmail ? EnvelopeOpenIcon : PaperAirplaneIcon)
+                    : CATEGORY_ICONS[entry.category as ActivityLogCategory];
+
+                  const categoryLabel = isEmail
+                    ? (isInboundEmail ? 'Received' : 'Sent')
+                    : CATEGORY_LABELS[entry.category as ActivityLogCategory];
+
+                  const isExpanded = isInboundEmail && expandedEmailId === entry.inboundEmail?.id;
+
                   return (
                     <div
                       key={entry.id}
@@ -333,11 +463,16 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                       {/* Avatar */}
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-                          isSystem ? 'bg-gray-200 text-gray-500' : 'bg-brand-100 text-brand-700'
+                          isSystem ? 'bg-gray-200 text-gray-500'
+                            : isInboundEmail ? 'bg-sky-100 text-sky-700'
+                            : entry.isOutboundEmail ? 'bg-blue-100 text-blue-700'
+                            : 'bg-brand-100 text-brand-700'
                         }`}
                       >
                         {isSystem ? (
                           <CogIcon className="w-4 h-4" />
+                        ) : isEmail ? (
+                          <IconComponent className="w-4 h-4" />
                         ) : (
                           getInitials(entry.actorName)
                         )}
@@ -347,15 +482,44 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-gray-900">
-                            {isSystem ? 'System' : entry.actorName}
+                            {isSystem ? 'System' : isInboundEmail ? `Email from ${entry.actorName}` : entry.actorName}
                           </span>
                           <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${colors.bg} ${colors.text}`}>
                             <IconComponent className="w-3 h-3" />
-                            {CATEGORY_LABELS[entry.category]}
+                            {categoryLabel}
                           </span>
+                          {isInboundEmail && entry.inboundEmail && entry.inboundEmail.attachmentCount > 0 && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+                              <PaperClipIcon className="w-3 h-3" />
+                              {entry.inboundEmail.attachmentCount}
+                            </span>
+                          )}
                           <span className="text-xs text-gray-400">{formatDateTime(entry.createdAt)}</span>
                         </div>
-                        <p className="text-sm text-gray-700 mt-0.5">{renderAction(entry.action)}</p>
+
+                        {/* Inbound email: subject + preview */}
+                        {isInboundEmail && entry.inboundEmail ? (
+                          <>
+                            <p className="text-sm font-medium text-gray-800 mt-0.5">{entry.inboundEmail.subject}</p>
+                            {entry.inboundEmail.bodyPreview && (
+                              <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{entry.inboundEmail.bodyPreview}</p>
+                            )}
+                            <button
+                              onClick={() => setExpandedEmailId(isExpanded ? null : entry.inboundEmail!.id)}
+                              className="text-xs text-brand-600 hover:text-brand-700 mt-1 font-medium"
+                            >
+                              {isExpanded ? 'Hide email' : 'View full email'}
+                            </button>
+                            {isExpanded && (
+                              <EmailDetailPanel
+                                emailId={entry.inboundEmail.id}
+                                onClose={() => setExpandedEmailId(null)}
+                              />
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm text-gray-700 mt-0.5">{renderAction(entry.action)}</p>
+                        )}
 
                         {/* Comment attachments */}
                         {entry.comment?.attachments && entry.comment.attachments.length > 0 && (

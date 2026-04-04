@@ -48,7 +48,7 @@ public class SesEmailService : IEmailService, IDisposable
         }
     }
 
-    public async Task SendEmailAsync(string to, string subject, string htmlBody, byte[]? attachment = null, string? attachmentName = null)
+    public async Task SendEmailAsync(string to, string subject, string htmlBody, byte[]? attachment = null, string? attachmentName = null, string? replyToAddress = null)
     {
         try
         {
@@ -75,11 +75,11 @@ public class SesEmailService : IEmailService, IDisposable
 
             if (attachment is { Length: > 0 } && !string.IsNullOrWhiteSpace(attachmentName))
             {
-                await SendRawEmailAsync(client, fromAddress, fromName, actualRecipient, subject, htmlBody, attachment, attachmentName);
+                await SendRawEmailAsync(client, fromAddress, fromName, actualRecipient, subject, htmlBody, attachment, attachmentName, replyToAddress);
             }
             else
             {
-                await SendSimpleEmailAsync(client, fromAddress, fromName, actualRecipient, subject, htmlBody);
+                await SendSimpleEmailAsync(client, fromAddress, fromName, actualRecipient, subject, htmlBody, replyToAddress);
             }
 
             _logger.LogInformation("Email sent to {To} with subject: {Subject}", to, subject);
@@ -92,7 +92,7 @@ public class SesEmailService : IEmailService, IDisposable
 
     private static async Task SendSimpleEmailAsync(
         AmazonSimpleEmailServiceV2Client client, string fromAddress, string fromName,
-        string to, string subject, string htmlBody)
+        string to, string subject, string htmlBody, string? replyToAddress = null)
     {
         var request = new SendEmailRequest
         {
@@ -111,17 +111,23 @@ public class SesEmailService : IEmailService, IDisposable
             }
         };
 
+        if (!string.IsNullOrWhiteSpace(replyToAddress))
+            request.ReplyToAddresses = new List<string> { replyToAddress };
+
         await client.SendEmailAsync(request);
     }
 
     private static async Task SendRawEmailAsync(
         AmazonSimpleEmailServiceV2Client client, string fromAddress, string fromName,
-        string to, string subject, string htmlBody, byte[] attachment, string attachmentName)
+        string to, string subject, string htmlBody, byte[] attachment, string attachmentName, string? replyToAddress = null)
     {
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, fromAddress));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
+
+        if (!string.IsNullOrWhiteSpace(replyToAddress))
+            message.ReplyTo.Add(MailboxAddress.Parse(replyToAddress));
 
         var bodyBuilder = new BodyBuilder
         {
