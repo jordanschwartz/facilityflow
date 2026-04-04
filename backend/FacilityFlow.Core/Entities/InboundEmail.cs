@@ -12,6 +12,8 @@ public class InboundEmail
     public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
     public string MessageId { get; set; } = string.Empty;
     public string? RawHeaders { get; set; }
+    public string? ConversationId { get; set; }
+    public string? InReplyToMessageId { get; set; }
 
     // Navigation
     public ServiceRequest? ServiceRequest { get; set; }

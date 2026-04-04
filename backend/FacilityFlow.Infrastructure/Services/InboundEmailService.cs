@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Enums;
+using FacilityFlow.Core.Helpers;
 using FacilityFlow.Core.Interfaces.Services;
 using FacilityFlow.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -100,6 +101,16 @@ public partial class InboundEmailService : IInboundEmailService
                 .ToList();
             var rawHeaders = JsonSerializer.Serialize(headers);
 
+            // Parse threading headers
+            var inReplyToMessageId = mimeMessage.InReplyTo;
+            string? conversationId = null;
+            if (serviceRequestId.HasValue)
+            {
+                var normalizedSubject = ConversationResolver.NormalizeSubject(subject);
+                conversationId = ConversationResolver.GenerateConversationId(
+                    normalizedSubject, serviceRequestId.Value);
+            }
+
             var inboundEmail = new InboundEmail
             {
                 Id = Guid.NewGuid(),
@@ -111,7 +122,9 @@ public partial class InboundEmailService : IInboundEmailService
                 BodyHtml = mimeMessage.HtmlBody,
                 ReceivedAt = DateTime.UtcNow,
                 MessageId = sesMessageId,
-                RawHeaders = rawHeaders
+                RawHeaders = rawHeaders,
+                ConversationId = conversationId,
+                InReplyToMessageId = inReplyToMessageId
             };
 
             // Save attachments

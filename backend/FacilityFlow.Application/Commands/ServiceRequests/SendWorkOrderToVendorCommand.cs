@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FacilityFlow.Application.DTOs.WorkOrders;
 using FacilityFlow.Core.Entities;
 using FacilityFlow.Core.Enums;
@@ -5,6 +6,7 @@ using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
 using FacilityFlow.Core.Interfaces.Services;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -18,35 +20,41 @@ public class SendWorkOrderToVendorCommandHandler : IRequestHandler<SendWorkOrder
     private readonly IRepository<VendorInvite> _vendorInvites;
     private readonly IRepository<Quote> _quotes;
     private readonly IRepository<WorkOrderDocument> _workOrderDocuments;
+    private readonly IRepository<OutboundEmail> _outboundEmails;
     private readonly IWorkOrderPdfService _pdfService;
     private readonly IFileStorageService _fileStorage;
     private readonly INotificationService _notifications;
     private readonly IActivityLogger _activityLogger;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public SendWorkOrderToVendorCommandHandler(
         IServiceRequestRepository serviceRequests,
         IRepository<VendorInvite> vendorInvites,
         IRepository<Quote> quotes,
         IRepository<WorkOrderDocument> workOrderDocuments,
+        IRepository<OutboundEmail> outboundEmails,
         IWorkOrderPdfService pdfService,
         IFileStorageService fileStorage,
         INotificationService notifications,
         IActivityLogger activityLogger,
         IEmailService emailService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHttpContextAccessor httpContextAccessor)
     {
         _serviceRequests = serviceRequests;
         _vendorInvites = vendorInvites;
         _quotes = quotes;
         _workOrderDocuments = workOrderDocuments;
+        _outboundEmails = outboundEmails;
         _pdfService = pdfService;
         _fileStorage = fileStorage;
         _notifications = notifications;
         _activityLogger = activityLogger;
         _emailService = emailService;
         _configuration = configuration;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<SendWorkOrderResponse> Handle(SendWorkOrderToVendorCommand command, CancellationToken cancellationToken)
@@ -159,6 +167,40 @@ public class SendWorkOrderToVendorCommandHandler : IRequestHandler<SendWorkOrder
         var pdfFileName = $"{woNum}-{invite.Vendor.CompanyName.Replace(" ", "-")}.pdf";
         var replyTo = Helpers.EmailAddressing.GetReplyToAddress(woNum);
         await _emailService.SendEmailAsync(invite.Vendor.Email, emailSubject, emailHtml, pdfBytes, pdfFileName, replyTo);
+
+        // Record outbound email
+        var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userName = _httpContextAccessor.HttpContext?.User.FindFirst("name")?.Value ?? "System";
+        Guid.TryParse(userIdClaim, out var sentById);
+
+        var outboundEmail = new OutboundEmail
+        {
+            ServiceRequestId = command.ServiceRequestId,
+            RecipientAddress = invite.Vendor.Email,
+            RecipientName = invite.Vendor.CompanyName,
+            Subject = emailSubject,
+            BodyHtml = emailHtml,
+            SentAt = DateTime.UtcNow,
+            SentById = sentById,
+            SentByName = userName,
+            EmailType = OutboundEmailType.WorkOrderDispatch,
+            ConversationId = woNum
+        };
+
+        // Save PDF attachment reference
+        using var pdfStream = new MemoryStream(pdfBytes);
+        var (attachmentUrl, _) = await _fileStorage.SaveFileAsync(
+            "outbound-email-attachments", pdfStream, pdfFileName, "application/pdf");
+        outboundEmail.Attachments.Add(new OutboundEmailAttachment
+        {
+            FileName = pdfFileName,
+            ContentType = "application/pdf",
+            FilePath = attachmentUrl,
+            FileSize = pdfBytes.Length
+        });
+
+        _outboundEmails.Add(outboundEmail);
+        await _outboundEmails.SaveChangesAsync();
 
         return new SendWorkOrderResponse(invite.PublicToken!, pdfUrl);
     }

@@ -30,6 +30,8 @@ public class AppDbContext : DbContext
     public DbSet<WorkOrderDocument> WorkOrderDocuments => Set<WorkOrderDocument>();
     public DbSet<InboundEmail> InboundEmails => Set<InboundEmail>();
     public DbSet<InboundEmailAttachment> InboundEmailAttachments => Set<InboundEmailAttachment>();
+    public DbSet<OutboundEmail> OutboundEmails => Set<OutboundEmail>();
+    public DbSet<OutboundEmailAttachment> OutboundEmailAttachments => Set<OutboundEmailAttachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -159,10 +161,24 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<InboundEmail>().HasIndex(ie => ie.MessageId).IsUnique();
         modelBuilder.Entity<InboundEmail>().HasIndex(ie => ie.ServiceRequestId);
         modelBuilder.Entity<InboundEmail>().HasIndex(ie => ie.ReceivedAt);
+        modelBuilder.Entity<InboundEmail>().HasIndex(ie => ie.ConversationId);
+        modelBuilder.Entity<InboundEmail>().HasIndex(ie => ie.InReplyToMessageId);
         modelBuilder.Entity<InboundEmail>()
             .HasOne(ie => ie.ServiceRequest).WithMany().HasForeignKey(ie => ie.ServiceRequestId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<InboundEmailAttachment>()
             .HasOne(a => a.InboundEmail).WithMany(ie => ie.Attachments).HasForeignKey(a => a.InboundEmailId).OnDelete(DeleteBehavior.Cascade);
+
+        // OutboundEmail
+        modelBuilder.Entity<OutboundEmail>().Property(oe => oe.EmailType).HasConversion<string>();
+        modelBuilder.Entity<OutboundEmail>().HasIndex(oe => oe.ServiceRequestId);
+        modelBuilder.Entity<OutboundEmail>().HasIndex(oe => oe.SentAt);
+        modelBuilder.Entity<OutboundEmail>().HasIndex(oe => oe.ConversationId);
+        modelBuilder.Entity<OutboundEmail>()
+            .HasOne(oe => oe.ServiceRequest).WithMany().HasForeignKey(oe => oe.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<OutboundEmail>()
+            .HasOne(oe => oe.SentBy).WithMany().HasForeignKey(oe => oe.SentById).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<OutboundEmailAttachment>()
+            .HasOne(a => a.OutboundEmail).WithMany(oe => oe.Attachments).HasForeignKey(a => a.OutboundEmailId).OnDelete(DeleteBehavior.Cascade);
 
         // ActivityLog
         modelBuilder.Entity<ActivityLog>().Property(a => a.Action).IsRequired();

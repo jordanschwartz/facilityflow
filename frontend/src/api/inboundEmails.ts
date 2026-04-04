@@ -17,4 +17,13 @@ export const inboundEmailsApi = {
 
   link: (emailId: string, serviceRequestId: string) =>
     apiClient.post(`/inbound-emails/${emailId}/link/${serviceRequestId}`),
+
+  createQuoteFromEmail: (id: string) =>
+    apiClient.post<{ quoteId: string }>(`/inbound-emails/${id}/actions/create-quote`),
+
+  attachAsPo: (id: string, attachmentId: string) =>
+    apiClient.post(`/inbound-emails/${id}/actions/attach-as-po`, { attachmentId }),
+
+  addToNotes: (id: string) =>
+    apiClient.post(`/inbound-emails/${id}/actions/add-to-notes`),
 };

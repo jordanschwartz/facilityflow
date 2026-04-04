@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FacilityFlow.Application.DTOs.Proposals;
 using FacilityFlow.Application.Queries.Proposals;
 using FacilityFlow.Core.Entities;
@@ -6,6 +7,7 @@ using FacilityFlow.Core.Exceptions;
 using FacilityFlow.Core.Interfaces.Repositories;
 using FacilityFlow.Core.Interfaces.Services;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -17,28 +19,37 @@ public class SendProposalCommandHandler : IRequestHandler<SendProposalCommand, P
 {
     private readonly IProposalRepository _proposals;
     private readonly IRepository<ProposalVersion> _versions;
+    private readonly IRepository<OutboundEmail> _outboundEmails;
     private readonly INotificationService _notifications;
     private readonly IActivityLogger _activityLogger;
     private readonly IEmailService _emailService;
     private readonly IProposalPdfService _pdfService;
+    private readonly IFileStorageService _fileStorage;
     private readonly IConfiguration _configuration;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public SendProposalCommandHandler(
         IProposalRepository proposals,
         IRepository<ProposalVersion> versions,
+        IRepository<OutboundEmail> outboundEmails,
         INotificationService notifications,
         IActivityLogger activityLogger,
         IEmailService emailService,
         IProposalPdfService pdfService,
-        IConfiguration configuration)
+        IFileStorageService fileStorage,
+        IConfiguration configuration,
+        IHttpContextAccessor httpContextAccessor)
     {
         _proposals = proposals;
         _versions = versions;
+        _outboundEmails = outboundEmails;
         _notifications = notifications;
         _activityLogger = activityLogger;
         _emailService = emailService;
         _pdfService = pdfService;
+        _fileStorage = fileStorage;
         _configuration = configuration;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<ProposalDto> Handle(SendProposalCommand command, CancellationToken cancellationToken)
@@ -101,6 +112,39 @@ public class SendProposalCommandHandler : IRequestHandler<SendProposalCommand, P
 
         var replyTo = Helpers.EmailAddressing.GetReplyToAddress(woNum);
         await _emailService.SendEmailAsync(client.Email, emailSubject, emailHtml, pdfBytes, pdfFileName, replyTo);
+
+        // Record outbound email
+        var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userName = _httpContextAccessor.HttpContext?.User.FindFirst("name")?.Value ?? "System";
+        Guid.TryParse(userIdClaim, out var sentById);
+
+        var outboundEmail = new OutboundEmail
+        {
+            ServiceRequestId = proposal.ServiceRequestId,
+            RecipientAddress = client.Email,
+            RecipientName = client.ContactName,
+            Subject = emailSubject,
+            BodyHtml = emailHtml,
+            SentAt = DateTime.UtcNow,
+            SentById = sentById,
+            SentByName = userName,
+            EmailType = OutboundEmailType.ProposalSent,
+            ConversationId = woNum
+        };
+
+        using var pdfStream = new MemoryStream(pdfBytes);
+        var (attachmentUrl, _) = await _fileStorage.SaveFileAsync(
+            "outbound-email-attachments", pdfStream, pdfFileName, "application/pdf");
+        outboundEmail.Attachments.Add(new OutboundEmailAttachment
+        {
+            FileName = pdfFileName,
+            ContentType = "application/pdf",
+            FilePath = attachmentUrl,
+            FileSize = pdfBytes.Length
+        });
+
+        _outboundEmails.Add(outboundEmail);
+        await _outboundEmails.SaveChangesAsync();
 
         await _activityLogger.LogAsync(
             proposal.ServiceRequestId, null,

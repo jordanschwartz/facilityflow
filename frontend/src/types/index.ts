@@ -448,6 +448,52 @@ export interface InboundEmailDetail extends InboundEmail {
   attachments: InboundEmailAttachment[];
 }
 
+export interface OutboundEmail {
+  id: string;
+  serviceRequestId: string;
+  recipientAddress: string;
+  recipientName?: string;
+  subject: string;
+  bodyPreview?: string;
+  sentAt: string;
+  sentByName: string;
+  emailType: string;
+  attachmentCount: number;
+}
+
+export interface OutboundEmailAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+}
+
+export interface OutboundEmailDetail extends OutboundEmail {
+  bodyHtml: string;
+  attachments: OutboundEmailAttachment[];
+}
+
+export interface EmailConversation {
+  conversationId: string;
+  subject: string;
+  latestEmailAt: string;
+  emailCount: number;
+  emails: EmailThreadItem[];
+}
+
+export interface EmailThreadItem {
+  id: string;
+  type: 'inbound' | 'outbound';
+  fromAddress: string;
+  fromName?: string;
+  toAddress?: string;
+  toName?: string;
+  subject: string;
+  bodyPreview?: string;
+  timestamp: string;
+  attachmentCount: number;
+}
+
 export interface ManualQuoteEntryRequest {
   serviceRequestId: string;
   vendorInviteId: string;

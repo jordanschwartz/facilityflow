@@ -1,4 +1,5 @@
 using FacilityFlow.Application.Commands.InboundEmails;
+using FacilityFlow.Application.Queries.EmailConversations;
 using FacilityFlow.Application.Queries.InboundEmails;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,13 @@ public class InboundEmailsController : ControllerBase
     {
         _mediator = mediator;
         _env = env;
+    }
+
+    [HttpGet("service-requests/{serviceRequestId:guid}/email-conversations")]
+    public async Task<IActionResult> GetConversations(Guid serviceRequestId)
+    {
+        var result = await _mediator.Send(new GetEmailConversationsQuery(serviceRequestId));
+        return Ok(result);
     }
 
     [HttpGet("service-requests/{serviceRequestId:guid}/emails")]

@@ -7,7 +7,8 @@ import toast from 'react-hot-toast';
 import { activityLogsApi } from '../api/activityLogs';
 import { commentsApi } from '../api/comments';
 import { inboundEmailsApi } from '../api/inboundEmails';
-import type { ActivityLog, ActivityLogCategory, Comment, InboundEmail, InboundEmailDetail } from '../types';
+import { outboundEmailsApi } from '../api/outboundEmails';
+import type { ActivityLog, ActivityLogCategory, Comment, InboundEmail, InboundEmailDetail, OutboundEmail, OutboundEmailDetail } from '../types';
 import Button from './ui/Button';
 import { formatDateTime } from '../utils/formatters';
 import { PaperClipIcon, XMarkIcon } from '@heroicons/react/24/solid';
@@ -18,11 +19,13 @@ import {
   CurrencyDollarIcon,
   CogIcon,
   PencilSquareIcon,
-  EnvelopeIcon,
   EnvelopeOpenIcon,
   PaperAirplaneIcon,
   ArrowDownTrayIcon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline';
+import EmailActionMenu from './EmailActionMenu';
+import ForwardEmailModal from './ForwardEmailModal';
 
 const commentSchema = z.object({ text: z.string().min(1, 'Comment cannot be empty') });
 type CommentForm = z.infer<typeof commentSchema>;
@@ -73,15 +76,15 @@ const CATEGORY_ICONS: Record<ActivityLogCategory, React.ComponentType<React.SVGP
 
 interface TimelineEntry {
   id: string;
-  type: 'activity' | 'comment' | 'inbound-email';
+  type: 'activity' | 'comment' | 'inbound-email' | 'outbound-email';
   actorName: string;
   action: string;
   category: ActivityLogCategory | 'Email';
   createdAt: string;
   comment?: Comment;
   inboundEmail?: InboundEmail;
+  outboundEmail?: OutboundEmail;
   isHighlighted?: boolean;
-  isOutboundEmail?: boolean;
 }
 
 function renderAction(action: string): React.ReactNode {
@@ -143,7 +146,7 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function EmailDetailPanel({ emailId, onClose }: { emailId: string; onClose: () => void }) {
+function InboundEmailDetailPanel({ emailId, onClose }: { emailId: string; onClose: () => void }) {
   const { data: email, isLoading } = useQuery({
     queryKey: ['inbound-email', emailId],
     queryFn: () => inboundEmailsApi.get(emailId).then(r => r.data),
@@ -212,11 +215,80 @@ function EmailDetailPanel({ emailId, onClose }: { emailId: string; onClose: () =
   );
 }
 
+function OutboundEmailDetailPanel({ emailId, onClose }: { emailId: string; onClose: () => void }) {
+  const { data: email, isLoading } = useQuery({
+    queryKey: ['outbound-email', emailId],
+    queryFn: () => outboundEmailsApi.get(emailId).then(r => r.data),
+  });
+
+  if (isLoading) return <div className="p-4 text-sm text-gray-500">Loading email...</div>;
+  if (!email) return <div className="p-4 text-sm text-gray-500">Email not found</div>;
+
+  return (
+    <div className="mt-3 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{email.subject}</p>
+          <p className="text-xs text-gray-500">
+            To: {email.recipientName ? `${email.recipientName} <${email.recipientAddress}>` : email.recipientAddress}
+          </p>
+          <p className="text-xs text-gray-400">Sent by {email.sentByName} &middot; {formatDateTime(email.sentAt)}</p>
+        </div>
+        <button onClick={onClose} className="ml-2 p-1 text-gray-400 hover:text-gray-600 flex-shrink-0">
+          <XMarkIcon className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="px-4 py-3">
+        {email.bodyHtml ? (
+          <iframe
+            srcDoc={email.bodyHtml}
+            title="Email body"
+            className="w-full border-0 min-h-[200px]"
+            sandbox="allow-same-origin"
+            onLoad={(e) => {
+              const iframe = e.target as HTMLIFrameElement;
+              if (iframe.contentDocument) {
+                iframe.style.height = iframe.contentDocument.body.scrollHeight + 'px';
+              }
+            }}
+          />
+        ) : (
+          <p className="text-sm text-gray-400 italic">No email body</p>
+        )}
+      </div>
+
+      {email.attachments.length > 0 && (
+        <div className="px-4 py-3 border-t border-gray-100">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+            Attachments ({email.attachments.length})
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {email.attachments.map(att => (
+              <a
+                key={att.id}
+                href={outboundEmailsApi.getAttachmentDownloadUrl(email.id, att.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-700"
+              >
+                <ArrowDownTrayIcon className="w-3.5 h-3.5 text-gray-400" />
+                <span className="truncate max-w-[140px]">{att.fileName}</span>
+                <span className="text-gray-400">({formatFileSize(att.fileSize)})</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ActivityTimeline({ serviceRequestId, workOrderId }: ActivityTimelineProps) {
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
+  const [expandedOutboundEmailId, setExpandedOutboundEmailId] = useState<string | null>(null);
+  const [forwardEmail, setForwardEmail] = useState<{ id: string; subject: string; recipientAddress: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CommentForm>({
@@ -240,6 +312,12 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
   const { data: inboundEmailsData } = useQuery({
     queryKey: ['inbound-emails', serviceRequestId],
     queryFn: () => inboundEmailsApi.list(serviceRequestId, 1, 50).then(r => r.data),
+    enabled: !!serviceRequestId,
+  });
+
+  const { data: outboundEmailsData } = useQuery({
+    queryKey: ['outbound-emails', serviceRequestId],
+    queryFn: () => outboundEmailsApi.list(serviceRequestId, 1, 50).then(r => r.data),
     enabled: !!serviceRequestId,
   });
 
@@ -275,25 +353,28 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
   const mergedEntries = useMemo(() => {
     const entries: TimelineEntry[] = [];
 
-    // Map activity logs — detect outbound emails (Communication category with email-related actions)
+    // Map activity logs — exclude outbound email activity logs since we now have real outbound email data
     (activityLogs ?? []).forEach(log => {
       const isHighlighted =
         (log.category === 'StatusChange' && log.action.toLowerCase().includes('completed')) ||
         log.category === 'Financial';
-      const isOutboundEmail = log.category === 'Communication' &&
+      const isOutboundEmailLog = log.category === 'Communication' &&
         (log.action.toLowerCase().includes('sent work order') ||
          log.action.toLowerCase().includes('sent proposal') ||
          log.action.toLowerCase().includes('sent email') ||
          log.action.toLowerCase().includes('sent invoice'));
+
+      // Skip outbound email activity logs when we have real outbound email data
+      if (isOutboundEmailLog && outboundEmailsData?.items?.length) return;
+
       entries.push({
         id: `log-${log.id}`,
         type: 'activity',
         actorName: log.actorName,
         action: log.action,
-        category: isOutboundEmail ? 'Email' : log.category,
+        category: log.category,
         createdAt: log.createdAt,
         isHighlighted,
-        isOutboundEmail,
       });
     });
 
@@ -323,6 +404,19 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
       });
     });
 
+    // Map outbound emails
+    (outboundEmailsData?.items ?? []).forEach(email => {
+      entries.push({
+        id: `outbound-${email.id}`,
+        type: 'outbound-email',
+        actorName: email.sentByName,
+        action: email.subject,
+        category: 'Email',
+        createdAt: email.sentAt,
+        outboundEmail: email,
+      });
+    });
+
     // Sort newest first
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -334,7 +428,7 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
       return entries.filter(e => e.category === activeFilter);
     }
     return entries;
-  }, [activityLogs, comments, inboundEmailsData, activeFilter]);
+  }, [activityLogs, comments, inboundEmailsData, outboundEmailsData, activeFilter]);
 
   const dayGroups = useMemo(() => groupByDay(mergedEntries), [mergedEntries]);
 
@@ -436,6 +530,7 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                 {group.entries.map(entry => {
                   const isEmail = entry.category === 'Email';
                   const isInboundEmail = entry.type === 'inbound-email';
+                  const isOutboundEmail = entry.type === 'outbound-email';
                   const isSystem = entry.category === 'System';
 
                   // Use email-specific colors or fall back to category colors
@@ -453,7 +548,8 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                     ? (isInboundEmail ? 'Received' : 'Sent')
                     : CATEGORY_LABELS[entry.category as ActivityLogCategory];
 
-                  const isExpanded = isInboundEmail && expandedEmailId === entry.inboundEmail?.id;
+                  const isInboundExpanded = isInboundEmail && expandedEmailId === entry.inboundEmail?.id;
+                  const isOutboundExpanded = isOutboundEmail && expandedOutboundEmailId === entry.outboundEmail?.id;
 
                   return (
                     <div
@@ -465,7 +561,7 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
                           isSystem ? 'bg-gray-200 text-gray-500'
                             : isInboundEmail ? 'bg-sky-100 text-sky-700'
-                            : entry.isOutboundEmail ? 'bg-blue-100 text-blue-700'
+                            : isOutboundEmail ? 'bg-blue-100 text-blue-700'
                             : 'bg-brand-100 text-brand-700'
                         }`}
                       >
@@ -482,7 +578,10 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-gray-900">
-                            {isSystem ? 'System' : isInboundEmail ? `Email from ${entry.actorName}` : entry.actorName}
+                            {isSystem ? 'System'
+                              : isInboundEmail ? `Email from ${entry.actorName}`
+                              : isOutboundEmail ? `Email to ${entry.outboundEmail?.recipientName || entry.outboundEmail?.recipientAddress}`
+                              : entry.actorName}
                           </span>
                           <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${colors.bg} ${colors.text}`}>
                             <IconComponent className="w-3 h-3" />
@@ -494,7 +593,35 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                               {entry.inboundEmail.attachmentCount}
                             </span>
                           )}
+                          {isOutboundEmail && entry.outboundEmail && entry.outboundEmail.attachmentCount > 0 && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+                              <PaperClipIcon className="w-3 h-3" />
+                              {entry.outboundEmail.attachmentCount}
+                            </span>
+                          )}
                           <span className="text-xs text-gray-400">{formatDateTime(entry.createdAt)}</span>
+
+                          {/* Action menu for emails */}
+                          {isInboundEmail && entry.inboundEmail && (
+                            <EmailActionMenu
+                              type="inbound"
+                              emailId={entry.inboundEmail.id}
+                              attachmentCount={entry.inboundEmail.attachmentCount}
+                              onForward={() => {}}
+                            />
+                          )}
+                          {isOutboundEmail && entry.outboundEmail && (
+                            <EmailActionMenu
+                              type="outbound"
+                              emailId={entry.outboundEmail.id}
+                              recipientAddress={entry.outboundEmail.recipientAddress}
+                              onForward={() => setForwardEmail({
+                                id: entry.outboundEmail!.id,
+                                subject: entry.outboundEmail!.subject,
+                                recipientAddress: entry.outboundEmail!.recipientAddress,
+                              })}
+                            />
+                          )}
                         </div>
 
                         {/* Inbound email: subject + preview */}
@@ -505,15 +632,35 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
                               <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{entry.inboundEmail.bodyPreview}</p>
                             )}
                             <button
-                              onClick={() => setExpandedEmailId(isExpanded ? null : entry.inboundEmail!.id)}
+                              onClick={() => setExpandedEmailId(isInboundExpanded ? null : entry.inboundEmail!.id)}
                               className="text-xs text-brand-600 hover:text-brand-700 mt-1 font-medium"
                             >
-                              {isExpanded ? 'Hide email' : 'View full email'}
+                              {isInboundExpanded ? 'Hide email' : 'View full email'}
                             </button>
-                            {isExpanded && (
-                              <EmailDetailPanel
+                            {isInboundExpanded && (
+                              <InboundEmailDetailPanel
                                 emailId={entry.inboundEmail.id}
                                 onClose={() => setExpandedEmailId(null)}
+                              />
+                            )}
+                          </>
+                        ) : isOutboundEmail && entry.outboundEmail ? (
+                          <>
+                            <p className="text-sm font-medium text-gray-800 mt-0.5">{entry.outboundEmail.subject}</p>
+                            {entry.outboundEmail.bodyPreview && (
+                              <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{entry.outboundEmail.bodyPreview}</p>
+                            )}
+                            <p className="text-xs text-gray-400 mt-0.5">Sent by {entry.outboundEmail.sentByName}</p>
+                            <button
+                              onClick={() => setExpandedOutboundEmailId(isOutboundExpanded ? null : entry.outboundEmail!.id)}
+                              className="text-xs text-brand-600 hover:text-brand-700 mt-1 font-medium"
+                            >
+                              {isOutboundExpanded ? 'Hide email' : 'View full email'}
+                            </button>
+                            {isOutboundExpanded && (
+                              <OutboundEmailDetailPanel
+                                emailId={entry.outboundEmail.id}
+                                onClose={() => setExpandedOutboundEmailId(null)}
                               />
                             )}
                           </>
@@ -557,6 +704,17 @@ export default function ActivityTimeline({ serviceRequestId, workOrderId }: Acti
             </div>
           ))}
         </div>
+      )}
+
+      {/* Forward email modal */}
+      {forwardEmail && (
+        <ForwardEmailModal
+          open={!!forwardEmail}
+          onClose={() => setForwardEmail(null)}
+          emailId={forwardEmail.id}
+          emailSubject={forwardEmail.subject}
+          type="outbound"
+        />
       )}
     </div>
   );
