@@ -120,8 +120,8 @@ export function ProposalPreviewContent({
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 mb-6">
         <div className="flex items-start justify-between mb-1">
           <h1 className="text-xl font-bold text-gray-900">{proposal.serviceRequest.title}</h1>
-          {proposal.proposalNumber && (
-            <span className="text-sm font-medium text-gray-500 flex-shrink-0 ml-4">{proposal.proposalNumber}</span>
+          {(proposal.serviceRequest?.workOrderNumber || proposal.proposalNumber) && (
+            <span className="text-sm font-medium text-gray-500 flex-shrink-0 ml-4">{proposal.serviceRequest?.workOrderNumber || proposal.proposalNumber}</span>
           )}
         </div>
         {(proposal.serviceRequest.location || proposal.serviceRequest.category) && (

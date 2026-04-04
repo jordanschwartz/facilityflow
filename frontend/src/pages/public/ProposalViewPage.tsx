@@ -172,8 +172,8 @@ export default function ProposalViewPage() {
               <h1 className="text-xl font-bold text-gray-900 mb-1">
                 {proposal.serviceRequest?.title}
               </h1>
-              {proposal.proposalNumber && (
-                <span className="text-sm font-medium text-gray-500 flex-shrink-0 ml-4">{proposal.proposalNumber}</span>
+              {(proposal.serviceRequest?.workOrderNumber || proposal.proposalNumber) && (
+                <span className="text-sm font-medium text-gray-500 flex-shrink-0 ml-4">{proposal.serviceRequest?.workOrderNumber || proposal.proposalNumber}</span>
               )}
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">

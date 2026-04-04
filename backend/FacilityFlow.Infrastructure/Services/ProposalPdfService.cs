@@ -65,9 +65,11 @@ public class ProposalPdfService : IProposalPdfService
 
     private static void ComposeHeader(IContainer container, Proposal proposal)
     {
-        var proposalNumber = !string.IsNullOrWhiteSpace(proposal.ProposalNumber)
-            ? proposal.ProposalNumber
-            : $"PROP-{proposal.Id.ToString("N")[..8].ToUpper()}";
+        var proposalNumber = !string.IsNullOrWhiteSpace(proposal.ServiceRequest?.WorkOrderNumber)
+            ? proposal.ServiceRequest.WorkOrderNumber
+            : !string.IsNullOrWhiteSpace(proposal.ProposalNumber)
+                ? proposal.ProposalNumber
+                : $"PROP-{proposal.Id.ToString("N")[..8].ToUpper()}";
         var date = proposal.SentAt ?? DateTime.UtcNow;
 
         container.Column(col =>

@@ -110,7 +110,7 @@ export default function ProposalBuilder({
     existingProposal ? existingProposal.price : null
   );
 
-  const [proposalNumber, setProposalNumber] = useState<string>(
+  const [proposalNumber] = useState<string>(
     existingProposal?.proposalNumber ?? ''
   );
 
@@ -302,21 +302,6 @@ export default function ProposalBuilder({
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit(onSubmit)}>
-        {/* Proposal Number */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <DocumentTextIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-base font-semibold text-gray-900">Proposal Number</h3>
-          </div>
-          <input
-            type="text"
-            value={proposalNumber}
-            onChange={e => setProposalNumber(e.target.value)}
-            placeholder="e.g. PROP-001"
-            className="block w-full max-w-xs rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
-          />
-        </div>
-
         {/* Section 1: Pricing & Margin */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
