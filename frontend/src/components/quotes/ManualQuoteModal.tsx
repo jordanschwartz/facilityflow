@@ -16,6 +16,7 @@ interface ManualQuoteModalProps {
   serviceRequestId: string;
   vendorInviteId: string;
   vendorName: string;
+  onQuoteCreated?: (quoteId: string) => void;
 }
 
 const schema = z.object({
@@ -43,7 +44,7 @@ function OptionalBadge() {
   );
 }
 
-export default function ManualQuoteModal({ isOpen, onClose, serviceRequestId, vendorInviteId, vendorName }: ManualQuoteModalProps) {
+export default function ManualQuoteModal({ isOpen, onClose, serviceRequestId, vendorInviteId, vendorName, onQuoteCreated }: ManualQuoteModalProps) {
   const queryClient = useQueryClient();
   const [showOptional, setShowOptional] = useState(false);
 
@@ -85,7 +86,7 @@ export default function ManualQuoteModal({ isOpen, onClose, serviceRequestId, ve
       }
       return quotesApi.manualEntry(payload);
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       toast.success(`Quote entered for ${vendorName}`);
       queryClient.invalidateQueries({ queryKey: ['service-requests', serviceRequestId, 'invites'] });
       queryClient.invalidateQueries({ queryKey: ['service-requests', serviceRequestId, 'quotes'] });
@@ -93,6 +94,7 @@ export default function ManualQuoteModal({ isOpen, onClose, serviceRequestId, ve
       reset();
       setShowOptional(false);
       onClose();
+      onQuoteCreated?.(res.data.id);
     },
     onError: () => toast.error('Failed to save quote. Please try again.'),
   });

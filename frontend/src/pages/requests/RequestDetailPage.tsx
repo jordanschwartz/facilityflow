@@ -602,6 +602,7 @@ export default function RequestDetailPage() {
                 serviceRequestId={id!}
                 vendorInviteId={manualQuoteVendor?.id ?? ''}
                 vendorName={manualQuoteVendor?.name ?? ''}
+                onQuoteCreated={(quoteId) => selectQuote.mutate(quoteId)}
               />
 
               {/* Confirm Send Work Order Dialog */}
