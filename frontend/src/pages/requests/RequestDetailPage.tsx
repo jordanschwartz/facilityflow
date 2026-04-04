@@ -231,6 +231,7 @@ export default function RequestDetailPage() {
   // ── Manual quote entry state ──
   const [manualQuoteVendor, setManualQuoteVendor] = useState<{ id: string; name: string } | null>(null);
   const [confirmAssignVendor, setConfirmAssignVendor] = useState<{ id: string; name: string; hasQuote?: boolean; quoteId?: string } | null>(null);
+  const [confirmUnassignVendor, setConfirmUnassignVendor] = useState<string | null>(null);
 
   // ══════════════════════════ QUERIES ══════════════════════════
   const { data: sr, isLoading } = useQuery({
@@ -551,11 +552,7 @@ export default function RequestDetailPage() {
                                         <button
                                           className="p-1.5 rounded-md transition-colors text-red-400 hover:bg-red-50 hover:text-red-600 cursor-pointer"
                                           title="Unassign vendor"
-                                          onClick={() => {
-                                            if (confirm(`Unassign ${inv.vendor?.companyName ?? 'this vendor'}?`)) {
-                                              unselectQuote.mutate();
-                                            }
-                                          }}
+                                          onClick={() => setConfirmUnassignVendor(inv.vendor?.companyName ?? 'this vendor')}
                                         >
                                           <XMarkIcon className="w-5 h-5" />
                                         </button>
@@ -694,6 +691,33 @@ export default function RequestDetailPage() {
                         }}
                       >
                         {confirmAssignVendor.hasQuote ? 'Assign' : 'Enter Quote'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Confirm Unassign Vendor Dialog */}
+              {confirmUnassignVendor && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                  <div className="fixed inset-0 bg-black/30" onClick={() => setConfirmUnassignVendor(null)} />
+                  <div className="relative bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Unassign {confirmUnassignVendor}?</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      This will unassign the vendor and revert all quotes back to submitted status. You can then select a different vendor.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                      <Button variant="secondary" onClick={() => setConfirmUnassignVendor(null)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="danger"
+                        loading={unselectQuote.isPending}
+                        onClick={() => {
+                          unselectQuote.mutate(undefined, { onSuccess: () => setConfirmUnassignVendor(null) });
+                        }}
+                      >
+                        Unassign
                       </Button>
                     </div>
                   </div>
