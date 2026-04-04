@@ -501,7 +501,7 @@ export default function RequestDetailPage() {
                             {isOperator && (
                               <td className="px-4 py-2.5">
                                 {(() => {
-                                  const canEmail = inv.status !== 'Selected' && inv.status !== 'Rejected';
+                                  const canEmail = inv.status !== 'Rejected';
                                   const canQuoteLink = !!inv.quote?.id;
                                   const canAssign = inv.status !== 'Selected' && inv.status !== 'Rejected';
                                   return (
