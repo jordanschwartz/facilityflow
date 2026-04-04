@@ -79,7 +79,7 @@ export default function VendorListPage() {
         </div>
         <input
           type="text"
-          placeholder="Filter by trade..."
+          placeholder="Filter by service..."
           value={trade}
           onChange={e => { setTrade(e.target.value); setPage(1); }}
           className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-brand-500 focus:border-brand-500"
@@ -131,7 +131,7 @@ export default function VendorListPage() {
               <tr className="bg-gray-100 border-b border-gray-300">
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Contact</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trades</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Services</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Service Area</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Rating</th>
                 <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>

@@ -444,7 +444,7 @@ export default function RequestDetailPage() {
                       <input {...registerDetails('location')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Category</label>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Service</label>
                       <input {...registerDetails('category')} className="block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm px-3 py-2" />
                     </div>
                   </div>
@@ -463,7 +463,7 @@ export default function RequestDetailPage() {
                   <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</dt><dd className="mt-1 text-sm text-gray-900">{sr.description}</dd></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Location</dt><dd className="mt-1 text-sm text-gray-900">{sr.location}</dd></div>
-                    <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Category</dt><dd className="mt-1 text-sm text-gray-900">{sr.category}</dd></div>
+                    <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Service</dt><dd className="mt-1 text-sm text-gray-900">{sr.category}</dd></div>
                   </div>
                   <div><dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</dt><dd className="mt-1"><PriorityBadge priority={sr.priority} /></dd></div>
                 </dl>
@@ -933,7 +933,7 @@ export default function RequestDetailPage() {
               {sr.category && (
                 <div className="flex items-start gap-2">
                   <TagIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div><dt className="text-xs text-gray-500">Category</dt><dd className="text-sm font-medium text-gray-900">{sr.category}</dd></div>
+                  <div><dt className="text-xs text-gray-500">Service</dt><dd className="text-sm font-medium text-gray-900">{sr.category}</dd></div>
                 </div>
               )}
               <div className="flex items-start gap-2">

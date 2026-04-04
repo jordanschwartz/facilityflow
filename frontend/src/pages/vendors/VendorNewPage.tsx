@@ -116,8 +116,8 @@ export default function VendorNewPage() {
             </div>
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Trades</label>
-              <p className="text-xs text-gray-500 mb-2">Press Enter or comma to add a trade</p>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Services</label>
+              <p className="text-xs text-gray-500 mb-2">Press Enter or comma to add a service</p>
               <div className="flex flex-wrap gap-2 mb-2">
                 {trades.map(t => (
                   <span key={t} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">

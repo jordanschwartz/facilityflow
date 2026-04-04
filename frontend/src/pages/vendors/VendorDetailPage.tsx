@@ -327,7 +327,7 @@ export default function VendorDetailPage() {
                   <dd className="mt-1 text-sm text-gray-900">{vendor.serviceRadiusMiles} miles</dd>
                 </div>
                 <div className="col-span-2">
-                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Trades</dt>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Services</dt>
                   <dd className="mt-1 flex flex-wrap gap-1">
                     {vendor.trades.map(t => (
                       <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">{t}</span>
@@ -388,7 +388,7 @@ export default function VendorDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Trades</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Services</label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {trades.map(t => (
                       <span key={t} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
@@ -400,7 +400,7 @@ export default function VendorDetailPage() {
                   <input type="text" value={tradeInput} onChange={e => setTradeInput(e.target.value)}
                     onKeyDown={e => handleTagKeyDown(e, tradeInput, setTradeInput, trades, setTrades)}
                     className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm border px-3 py-2"
-                    placeholder="Add trade (Enter to add)" />
+                    placeholder="Add service (Enter to add)" />
                 </div>
 
                 <div className="flex items-center gap-3">

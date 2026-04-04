@@ -142,7 +142,7 @@ function LocalVendorsTab({
       {/* Filter controls */}
       <div className="flex flex-wrap gap-3">
         <div className="flex-1 min-w-[140px]">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Trade / Specialty</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Service / Specialty</label>
           <input
             type="text"
             list="local-trade-options"
@@ -393,7 +393,7 @@ function DiscoverVendorsTab({
       {/* Search form */}
       <div className="flex flex-wrap gap-3">
         <div className="flex-1 min-w-[160px]">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Trade / Specialty</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Service / Specialty</label>
           <input
             type="text"
             list="trade-options"

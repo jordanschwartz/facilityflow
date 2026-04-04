@@ -242,7 +242,7 @@ export default function QuoteSubmitPage() {
                     <dd className="mt-1 text-sm text-gray-900">{sr.location}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Category</dt>
+                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Service</dt>
                     <dd className="mt-1 text-sm text-gray-900">{sr.category}</dd>
                   </div>
                 </div>
