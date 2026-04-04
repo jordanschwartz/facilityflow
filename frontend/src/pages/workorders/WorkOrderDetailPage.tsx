@@ -34,7 +34,7 @@ export default function WorkOrderDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const isOperator = user?.role === 'Operator';
+  const isOperator = user?.role === 'Operator' || user?.role === 'Admin';
   const isVendor = user?.role === 'Vendor';
   const [editingNotes, setEditingNotes] = useState(false);
 

@@ -203,7 +203,7 @@ export default function RequestDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const isOperator = user?.role === 'Operator';
+  const isOperator = user?.role === 'Operator' || user?.role === 'Admin';
 
   const tabParam = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(tabParam && TABS.includes(tabParam) ? tabParam : 'timeline');
