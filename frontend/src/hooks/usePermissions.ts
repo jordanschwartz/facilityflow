@@ -8,7 +8,8 @@ export function usePermissions() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const permissions = data?.data ?? [];
+  const raw = data?.data;
+  const permissions: string[] = Array.isArray(raw) ? raw : (raw?.permissions ?? []);
   const hasPermission = (perm: string) =>
     permissions.includes('FullAccess') || permissions.includes(perm);
 
