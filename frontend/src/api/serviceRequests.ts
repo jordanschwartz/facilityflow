@@ -16,6 +16,7 @@ export const serviceRequestsApi = {
     apiClient.post(`/service-requests/${id}/invites`, { vendorIds }),
   getQuotes: (id: string) => apiClient.get<Quote[]>(`/service-requests/${id}/quotes`),
   getAllowedTransitions: (id: string) => apiClient.get<string[]>(`/service-requests/${id}/allowed-transitions`),
+  getServices: () => apiClient.get<string[]>('/service-requests/services'),
   uploadPo: (id: string, data: { poNumber: string; poAmount?: number; file: File }) => {
     const form = new FormData();
     form.append('poNumber', data.poNumber);

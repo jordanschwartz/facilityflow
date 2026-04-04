@@ -5,9 +5,11 @@ using FacilityFlow.Application.DTOs.ServiceRequests;
 using FacilityFlow.Application.DTOs.VendorInvites;
 using FacilityFlow.Application.Queries.ServiceRequests;
 using FacilityFlow.Core.Enums;
+using FacilityFlow.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FacilityFlow.Api.Controllers;
 
@@ -17,8 +19,13 @@ namespace FacilityFlow.Api.Controllers;
 public class ServiceRequestsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly AppDbContext _db;
 
-    public ServiceRequestsController(IMediator mediator) => _mediator = mediator;
+    public ServiceRequestsController(IMediator mediator, AppDbContext db)
+    {
+        _mediator = mediator;
+        _db = db;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
@@ -31,6 +38,30 @@ public class ServiceRequestsController : ControllerBase
     {
         var result = await _mediator.Send(new GetServiceRequestsQuery(status, priority, clientId, search, page, pageSize));
         return Ok(result);
+    }
+
+    [HttpGet("services")]
+    public async Task<IActionResult> GetServices()
+    {
+        var categories = await _db.ServiceRequests
+            .Where(sr => sr.Category != null && sr.Category != "")
+            .Select(sr => sr.Category!)
+            .Distinct()
+            .ToListAsync();
+
+        var trades = await _db.Vendors
+            .Where(v => v.Trades != null)
+            .SelectMany(v => v.Trades)
+            .Distinct()
+            .ToListAsync();
+
+        var merged = categories.Concat(trades)
+            .GroupBy(s => s.ToLowerInvariant())
+            .Select(g => g.First())
+            .OrderBy(s => s)
+            .ToList();
+
+        return Ok(merged);
     }
 
     [HttpPost]

@@ -20,11 +20,18 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const CATEGORIES = ['HVAC', 'Electrical', 'Plumbing', 'Roofing', 'General', 'Other'];
+const FALLBACK_SERVICES = ['HVAC', 'Electrical', 'Plumbing', 'Roofing', 'General', 'Other'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 
 export default function RequestNewPage() {
   const navigate = useNavigate();
+
+  const { data: servicesData } = useQuery({
+    queryKey: ['services'],
+    queryFn: () => serviceRequestsApi.getServices(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const services = servicesData?.data?.length ? servicesData.data : FALLBACK_SERVICES;
 
   const { data: clientsData } = useQuery({
     queryKey: ['clients', 'all'],
@@ -129,7 +136,7 @@ export default function RequestNewPage() {
                 placeholder="Select or type a service..."
               />
               <datalist id="service-options">
-                {CATEGORIES.map(c => <option key={c} value={c} />)}
+                {services.map(c => <option key={c} value={c} />)}
               </datalist>
               {errors.category && <p className="mt-1 text-xs text-red-600">{errors.category.message}</p>}
             </div>
